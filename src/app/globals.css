@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "flowbite-react/plugin/tailwindcss";
+@source "../../.flowbite-react/class-list.json";
+
+/* Vous pouvez ajouter vos styles personnalisés ici */
