@@ -37,6 +37,13 @@ interface Order {
   created_at?: string;
 }
 
+// Extension du type jsPDF pour inclure la propriété ajoutée par autotable
+interface jsPDFWithAutotable extends jsPDF {
+  lastAutoTable?: {
+    finalY: number;
+  };
+}
+
 export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [, setFetching] = useState(true); // Suppression de l'avertissement 'fetching' inutilisé
@@ -64,7 +71,7 @@ export default function AdminPage() {
   }, 0);
 
   const generateGlobalReport = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF() as jsPDFWithAutotable;
     const dateStr = new Date().toLocaleDateString();
 
     doc.setFillColor(37, 99, 235);
@@ -91,8 +98,8 @@ export default function AdminPage() {
       headStyles: { fillColor: [37, 99, 235] },
     });
 
-    // Utilisation sécurisée pour éviter 'any'
-    const finalY = (doc as any).lastAutoTable?.finalY || 150;
+    // Utilisation du type étendu au lieu de 'any'
+    const finalY = doc.lastAutoTable?.finalY || 150;
     const lastY = finalY + 15;
     doc.text("Historique des Commandes Récentes", 14, lastY);
     autoTable(doc, {
