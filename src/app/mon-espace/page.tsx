@@ -35,6 +35,13 @@ interface UserData {
   orders: Order[];
 }
 
+// Fixed the 'any' type for jsPDF internal property
+interface ExtendedJsPDF extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +51,7 @@ export default function DashboardPage() {
 
   // --- GÉNÉRATION DE FACTURE PDF ---
   const generatePDF = (order: Order) => {
-    const doc = new jsPDF();
+    const doc = new jsPDF() as ExtendedJsPDF;
     
     // En-tête
     doc.setFillColor(37, 99, 235);
@@ -87,8 +94,8 @@ export default function DashboardPage() {
       styles: { fontSize: 9 },
     });
 
-    // Total - Correction du positionnement
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    // Total - Using the extended type instead of 'any'
+    const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.text(`MONTANT TOTAL : ${parseFloat(String(order.prix_total)).toFixed(2)} $`, 130, finalY);
@@ -114,7 +121,6 @@ export default function DashboardPage() {
         }
 
         const user = JSON.parse(storedUser);
-        // Extraction robuste de l'ID (Adaptation : gestion des objets imbriqués ou directs)
         const userId = user.id_utilisateur || user.id || user.user?.id_utilisateur || user.user?.id;
 
         if (!userId) {
@@ -138,10 +144,11 @@ export default function DashboardPage() {
           }
           setLoading(false);
         }
-      } catch (e: any) {
+      } catch (e) {
         if (isMounted) {
+          const errorMessage = e instanceof Error ? e.message : "Session invalide.";
           console.error("Erreur de session:", e);
-          setError(e.message || "Session invalide.");
+          setError(errorMessage);
           setLoading(false);
         }
       }
@@ -188,7 +195,8 @@ export default function DashboardPage() {
              onClick={() => { localStorage.clear(); window.location.href = '/'; }}
              className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase text-xs hover:bg-zinc-800 transition-all"
            >
-             Retourner à l'accueil
+             {/* Fixed unescaped entity here */}
+             Retourner à l&apos;accueil
            </button>
         </div>
     </div>

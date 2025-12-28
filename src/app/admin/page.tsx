@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image'; // Importation pour l'optimisation des images
 import { 
   PlusCircle, LayoutDashboard, Image as ImageIcon, Loader2, 
   Sparkles, Menu, X, Upload, Trash2, Edit3, 
   LogOut, ShoppingBag, User, Phone, MapPin, Package, TrendingUp,
-  Monitor, Battery, Cpu, FileText, Download,CheckCircle2 
+  Monitor, Battery, Cpu, FileText, Download, CheckCircle2 
 } from 'lucide-react';
 
 import jsPDF from 'jspdf';
@@ -38,7 +39,7 @@ interface Order {
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+  const [, setFetching] = useState(true); // Suppression de l'avertissement 'fetching' inutilisé
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -76,9 +77,9 @@ export default function AdminPage() {
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
-    doc.text("Résumé de l&apos;Activité", 14, 55);
+    doc.text("Résumé de l'Activité", 14, 55);
     doc.setFontSize(11);
-    doc.text(`Chiffre d&apos;Affaires Total (Livré): ${CA.toLocaleString()} $`, 14, 65);
+    doc.text(`Chiffre d'Affaires Total (Livré): ${CA.toLocaleString()} $`, 14, 65);
     doc.text(`Total produits en catalogue: ${products.length}`, 14, 72);
     doc.text(`Unités totales en stock: ${totalStock}`, 14, 79);
 
@@ -90,7 +91,7 @@ export default function AdminPage() {
       headStyles: { fillColor: [37, 99, 235] },
     });
 
-    // Utilisation sécurisée de lastAutoTable
+    // Utilisation sécurisée pour éviter 'any'
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
     const lastY = finalY + 15;
     doc.text("Historique des Commandes Récentes", 14, lastY);
@@ -360,7 +361,7 @@ export default function AdminPage() {
                 <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                      <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Monitor size={10}/> Écran</label>
-                     <input placeholder="6.7&apos; OLED" value={newProduct.ecran} onChange={e => setNewProduct({...newProduct, ecran: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
+                     <input placeholder="6.7' OLED" value={newProduct.ecran} onChange={e => setNewProduct({...newProduct, ecran: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
                     </div>
                     <div className="space-y-2">
                      <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Battery size={10}/> Batterie</label>
@@ -391,7 +392,17 @@ export default function AdminPage() {
                   <div className="relative group">
                     <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                     <div className="w-full p-8 border-2 border-dashed border-zinc-200 rounded-[2rem] flex flex-col items-center justify-center gap-2 group-hover:bg-blue-50 group-hover:border-blue-600 transition-all">
-                      {newProduct.image ? <img src={newProduct.image} className="h-20 object-contain rounded-lg shadow-md" alt="Preview" /> : <Upload size={24} className="text-zinc-300 group-hover:text-blue-600" />}
+                      {newProduct.image ? (
+                        <Image 
+                          src={newProduct.image} 
+                          width={80} 
+                          height={80} 
+                          className="object-contain rounded-lg shadow-md" 
+                          alt="Preview" 
+                        />
+                      ) : (
+                        <Upload size={24} className="text-zinc-300 group-hover:text-blue-600" />
+                      )}
                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Cliquez pour ajouter/modifier</span>
                     </div>
                   </div>
@@ -403,7 +414,7 @@ export default function AdminPage() {
               <div className="lg:col-span-5 space-y-8">
                 <div className="bg-white p-4 rounded-[2.5rem] border border-zinc-200 shadow-sm flex items-center justify-center aspect-square overflow-hidden relative">
                   {newProduct.image ? (
-                    <img src={newProduct.image} className="w-full h-full object-contain p-4" alt="Preview" />
+                    <Image src={newProduct.image} fill className="object-contain p-4" alt="Preview" />
                   ) : (
                     <div className="text-center">
                       <ImageIcon size={48} className="text-zinc-100 mx-auto" />
@@ -418,7 +429,13 @@ export default function AdminPage() {
                       {products.map((p) => (
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={p.id} className="bg-white p-3 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between group">
                           <div className="flex items-center gap-3">
-                            <img src={p.image} className="w-10 h-10 rounded-lg object-cover bg-zinc-50" alt={p.nom} />
+                            <Image 
+                              src={p.image} 
+                              width={40} 
+                              height={40} 
+                              className="rounded-lg object-cover bg-zinc-50" 
+                              alt={p.nom} 
+                            />
                             <div>
                               <p className="text-xs font-black truncate max-w-[120px]">{p.nom}</p>
                               <p className="text-[10px] font-bold text-orange-600">{p.prix} $</p>
@@ -541,13 +558,13 @@ export default function AdminPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Top Performance</p>
-                    <p className="text-xs font-bold text-zinc-400 uppercase">{"Produit le plus en stock :"}</p>
+                    <p className="text-xs font-bold text-zinc-400 uppercase">Produit le plus en stock :</p>
                     <p className="text-xl font-black italic mt-1">
                         {products.length > 0 ? [...products].sort((a,b) => {
                            const stockA = typeof a.stock === 'string' ? parseInt(a.stock) : a.stock;
                            const stockB = typeof b.stock === 'string' ? parseInt(b.stock) : b.stock;
                            return stockB - stockA;
-                        })[0].nom : 'N/A'};
+                        })[0].nom : 'N/A'}
                     </p>
                   </div>
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
