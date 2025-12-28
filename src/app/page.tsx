@@ -4,8 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { 
   ShoppingCart, Zap, X, ShoppingBag, 
-  CheckCircle2, Plus, Minus, Trash2, MessageCircle, Box, Moon, Sun, Search, Star,
-  CreditCard, Smartphone, Monitor, Battery, Cpu, ArrowUp, ShieldCheck, Truck, Headphones 
+  CheckCircle2, Plus, Minus, Trash2, MessageCircle, Box, Search, Star,
+  CreditCard, Smartphone, Monitor, Battery,  
 } from 'lucide-react';
 
 // --- Types ---
