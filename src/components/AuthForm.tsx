@@ -37,12 +37,12 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
     // --- AJOUT : VALIDATION DU TÉLÉPHONE (Uniquement à l'inscription) ---
     if (!isLogin) {
-      // Regex simplifié pour accepter les formats internationaux et locaux
-      const phoneRegex = /^[0-9+]{8,15}$/;
+      // Regex pour formats : 0612345678, +33612345678, etc.
+      const phoneRegex = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
       if (!phoneRegex.test(formData.phone)) {
         setStatus({ 
           type: 'error', 
-          message: "Format de téléphone invalide." 
+          message: "Format de téléphone invalide (ex: 0612345678)." 
         });
         return;
       }
@@ -64,30 +64,22 @@ export default function AuthForm({ onClose }: AuthFormProps) {
       const data = await response.json();
 
       if (data.success) {
-        // --- LOGIQUE DE STOCKAGE SÉCURISÉE ---
+        // --- LOGIQUE MODIFIÉE ICI ---
         if (isLogin) {
           // Cas Connexion réussie
           setStatus({ type: 'success', message: data.message });
-          
-          // On s'assure que data.user contient bien id_utilisateur venant du PHP
-          const userToStore = data.user; 
-          
-          // Nettoyage des anciens restes de sessions
+          const userToStore = data.user;
           localStorage.removeItem('user');
           localStorage.removeItem('djephy_user');
-          
-          // Stockage de l'utilisateur actuel (avec son ID dynamique)
           localStorage.setItem('user', JSON.stringify(userToStore));
 
           try { 
-            // Mise à jour du contexte global Auth
             login(userToStore); 
           } catch (e) { 
             localStorage.setItem('djephy_user', JSON.stringify(userToStore)); 
           }
           
           setTimeout(() => {
-            // Redirection selon le rôle (admin ou client)
             window.location.href = userToStore.role === 'admin' ? '/admin' : '/mon-espace';
           }, 1500);
         } else {
@@ -189,13 +181,13 @@ export default function AuthForm({ onClose }: AuthFormProps) {
                 {/* CHAMP NOM */}
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input name="name" type="text" required={!isLogin} placeholder="Nom complet" value={formData.name} onChange={handleChange} className={inputClassName} />
+                  <input name="name" type="text" required placeholder="Nom complet" value={formData.name} onChange={handleChange} className={inputClassName} />
                 </div>
 
-                {/* CHAMP : TÉLÉPHONE */}
+                {/* NOUVEAU CHAMP : TÉLÉPHONE */}
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input name="phone" type="tel" required={!isLogin} placeholder="Numéro de téléphone" value={formData.phone} onChange={handleChange} className={inputClassName} />
+                  <input name="phone" type="tel" required placeholder="Numéro de téléphone" value={formData.phone} onChange={handleChange} className={inputClassName} />
                 </div>
               </motion.div>
             )}

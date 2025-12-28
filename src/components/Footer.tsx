@@ -18,8 +18,9 @@ const Footer: React.FC = () => {
               Djephy<span className="text-amber-500">Gold</span>
             </span>
           </Link>
+          {/* CORRECTION CI-DESSOUS : Utilisation de &apos; pour l'apostrophe */}
           <p className="text-gray-400 text-sm leading-relaxed">
-            L'excellence technologique à votre portée. Smartphones, ordinateurs et accessoires à Butembo.
+            L&apos;excellence technologique à votre portée. Smartphones, ordinateurs et accessoires à Butembo.
           </p>
           <div className="flex space-x-4">
             <Link href="#" className="p-2.5 bg-white/5 rounded-xl hover:bg-amber-500 hover:text-black transition-all duration-300">
