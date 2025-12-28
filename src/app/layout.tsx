@@ -28,7 +28,7 @@ export default function RootLayout({
         <div className="fixed inset-0 -z-10 h-full w-full bg-[#020617] overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,58,138,0.3)_0%,rgba(2,6,23,1)_70%)]"></div>
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-orange-600/10 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-blue-600/10 rounded-full blur-[120px]"></div>
         </div>
 
         {/* CORRECTION : Ajout de AuthProvider. 

@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/src/store/authContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, Github, Eye, EyeOff, Loader2, X, Shield, CheckCircle2 } from 'lucide-react';
+// Ajout de l'icône Phone
+import { Mail, Lock, User, ArrowRight, Github, Eye, EyeOff, Loader2, X, Shield, CheckCircle2, Phone } from 'lucide-react';
 
 interface AuthFormProps {
   onClose?: () => void;
@@ -12,9 +13,12 @@ export default function AuthForm({ onClose }: AuthFormProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   
+  // 1. AJOUT DU CHAMP "phone" DANS L'ÉTAT INITIAL
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '' });
   const [status, setStatus] = useState<{ type: 'error' | 'success' | null, message: string }>({ type: null, message: '' });
+
+  const { login } = useAuth();
 
   const handleGoogleLogin = () => {
     window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth'; 
@@ -24,20 +28,26 @@ export default function AuthForm({ onClose }: AuthFormProps) {
     window.location.href = 'https://github.com/login/oauth/authorize';
   };
 
-  const getPasswordStrength = (pass: string) => {
-    let score = 0;
-    if (pass.length > 6) score++;
-    if (/[A-Z]/.test(pass)) score++;
-    if (/[0-9]/.test(pass)) score++;
-    if (/[^A-Za-z0-9]/.test(pass)) score++;
-    return score;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  const strength = getPasswordStrength(formData.password);
-  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // --- AJOUT : VALIDATION DU TÉLÉPHONE (Uniquement à l'inscription) ---
+    if (!isLogin) {
+      // Regex simplifié pour accepter les formats internationaux et locaux
+      const phoneRegex = /^[0-9+]{8,15}$/;
+      if (!phoneRegex.test(formData.phone)) {
+        setStatus({ 
+          type: 'error', 
+          message: "Format de téléphone invalide." 
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
     setStatus({ type: null, message: '' });
 
@@ -47,45 +57,55 @@ export default function AuthForm({ onClose }: AuthFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: isLogin ? 'login' : 'register',
-          ...formData
+          ...formData 
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setStatus({ type: 'success', message: data.message });
-        
-        // --- NOUVEAU : VIDAGE DES CHAMPS APRÈS RÉUSSITE ---
-        setFormData({ name: '', email: '', password: '' });
-
+        // --- LOGIQUE DE STOCKAGE SÉCURISÉE ---
         if (isLogin) {
-          try { login(data.user); } catch (e) { localStorage.setItem('djephy_user', JSON.stringify(data.user)); }
+          // Cas Connexion réussie
+          setStatus({ type: 'success', message: data.message });
+          
+          // On s'assure que data.user contient bien id_utilisateur venant du PHP
+          const userToStore = data.user; 
+          
+          // Nettoyage des anciens restes de sessions
+          localStorage.removeItem('user');
+          localStorage.removeItem('djephy_user');
+          
+          // Stockage de l'utilisateur actuel (avec son ID dynamique)
+          localStorage.setItem('user', JSON.stringify(userToStore));
+
+          try { 
+            // Mise à jour du contexte global Auth
+            login(userToStore); 
+          } catch (e) { 
+            localStorage.setItem('djephy_user', JSON.stringify(userToStore)); 
+          }
+          
           setTimeout(() => {
-            if (data.user.role === 'admin') {
-              window.location.href = '/admin';
-            } else {
-              window.location.href = '/mon-espace';
-            }
+            // Redirection selon le rôle (admin ou client)
+            window.location.href = userToStore.role === 'admin' ? '/admin' : '/mon-espace';
           }, 1500);
         } else {
+          // Cas Inscription réussie : ON BASCULE SUR LE LOGIN
+          setStatus({ type: 'success', message: "Compte créé ! Veuillez vous connecter." });
+          setFormData({ ...formData, password: '' }); // On garde l'email mais on vide le mdp
           setTimeout(() => {
-            setIsLogin(true);
-            setStatus({ type: 'success', message: "Compte créé ! Connectez-vous." });
+            setIsLogin(true); // Bascule vers l'interface de connexion
           }, 1500);
         }
       } else {
         setStatus({ type: 'error', message: data.message });
       }
     } catch (error) {
-      setStatus({ type: 'error', message: "Impossible de contacter le serveur PHP." });
+      setStatus({ type: 'error', message: "Le service d'authentification est indisponible." });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const inputClassName = "w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none transition-all duration-200 text-slate-700 placeholder:text-slate-400";
@@ -99,7 +119,6 @@ export default function AuthForm({ onClose }: AuthFormProps) {
         transition={{ type: "spring", duration: 0.5 }}
         className="relative bg-white p-6 rounded-[2rem] shadow-[0_15px_40px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden"
       >
-        {/* --- NOUVEAU : OVERLAY DE CHARGEMENT --- */}
         <AnimatePresence>
           {isLoading && (
             <motion.div 
@@ -116,20 +135,29 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
         <div className="flex flex-col items-center mb-5">
             <motion.div 
+              layout
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
               className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 mb-2"
             >
                 <Shield className="text-white" size={20} />
             </motion.div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+            <motion.h2 
+              layout
+              key={isLogin ? "login-title" : "register-title"}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xl font-bold text-slate-800 tracking-tight"
+            >
                 {isLogin ? "Connexion" : "Inscription"}
-            </h2>
+            </motion.h2>
         </div>
 
-        <button onClick={onClose} className="absolute right-5 top-5 text-slate-300 hover:text-slate-500 transition-colors z-10">
-          <X size={20} />
-        </button>
+        {onClose && (
+          <button onClick={onClose} className="absolute right-5 top-5 text-slate-300 hover:text-slate-500 transition-colors z-10">
+            <X size={20} />
+          </button>
+        )}
 
         <AnimatePresence mode="wait">
           {status.message && (
@@ -150,14 +178,25 @@ export default function AuthForm({ onClose }: AuthFormProps) {
         <form className="space-y-3" onSubmit={handleSubmit}>
           <AnimatePresence mode="popLayout">
             {!isLogin && (
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                exit={{ opacity: 0, x: 20 }} 
-                className="relative"
+              <motion.div
+                key="register-fields"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-3 overflow-hidden"
               >
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input name="name" type="text" required placeholder="Nom complet" value={formData.name} onChange={handleChange} className={inputClassName} />
+                {/* CHAMP NOM */}
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input name="name" type="text" required={!isLogin} placeholder="Nom complet" value={formData.name} onChange={handleChange} className={inputClassName} />
+                </div>
+
+                {/* CHAMP : TÉLÉPHONE */}
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input name="phone" type="tel" required={!isLogin} placeholder="Numéro de téléphone" value={formData.phone} onChange={handleChange} className={inputClassName} />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -194,6 +233,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <motion.button 
+              layout
               whileHover={{ y: -2 }}
               onClick={handleGoogleLogin} 
               className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all shadow-sm"
@@ -207,6 +247,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
                 <span className="text-[11px] font-bold text-slate-600">Google</span>
             </motion.button>
             <motion.button 
+              layout
               whileHover={{ y: -2 }}
               onClick={handleGithubLogin} 
               className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 hover:bg-black transition-all text-white shadow-sm"
@@ -219,7 +260,11 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
         <div className="mt-5 text-center">
           <button 
-            onClick={() => setIsLogin(!isLogin)} 
+            type="button"
+            onClick={() => {
+                setIsLogin(!isLogin);
+                setStatus({ type: null, message: '' });
+            }} 
             className="text-[11px] font-bold text-slate-400 hover:text-blue-600 transition-colors"
           >
             {isLogin ? "Créer un compte" : "Retour à la connexion"}

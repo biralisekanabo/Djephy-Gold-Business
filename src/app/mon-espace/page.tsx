@@ -1,185 +1,357 @@
 "use client";
 import React, { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '@/src/store/authContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Package, User, LogOut, LayoutDashboard, 
-  Search, Sun, Moon, ShoppingBag, ArrowRight, Clock, CheckCircle, TrendingUp
+  Package, LogOut, Search, ShoppingBag,
+  ChevronRight, CheckCircle, Loader2, Download 
 } from 'lucide-react';
-import Link from 'next/link';
+// Importations pour le PDF
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
-  const { user: authUser, isLoading, logout } = useAuth();
+  // --- NOUVELLE FONCTION : GÉNÉRATION DE FACTURE PDF ---
+  const generatePDF = (order: any) => {
+    const doc = new jsPDF();
+    
+    // En-tête stylisé
+    doc.setFillColor(37, 99, 235); // Bleu royal
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text("FACTURE", 15, 25);
+    
+    doc.setFontSize(10);
+    doc.text(`Référence : #CMD-${order.id}`, 15, 33);
+
+    // Infos Client & Boutique
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("DESTINATAIRE :", 15, 55);
+    doc.setFont("helvetica", "normal");
+    // ADAPTATION : nom_complet
+    doc.text(`${data?.profile?.nom_complet || data?.profile?.nom || 'Client'}`, 15, 62);
+    doc.text(`${data?.profile?.email || ''}`, 15, 68);
+    doc.text(`Ville : ${order.ville || 'Non précisée'}`, 15, 74);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("ÉMETTEUR :", 140, 55);
+    doc.setFont("helvetica", "normal");
+    doc.text("Ma Boutique en Ligne", 140, 62);
+    doc.text(`Date : ${order.date_commande}`, 140, 68);
+
+    // Tableau des articles
+    const tableRows = (order.items || []).map((item: any) => [
+      item.nom_produit,
+      item.quantite.toString(),
+      `${parseFloat(item.prix_unitaire).toFixed(2)} $`,
+      `${(item.quantite * item.prix_unitaire).toFixed(2)} $`
+    ]);
+
+    autoTable(doc, {
+      startY: 85,
+      head: [['Produit', 'Qté', 'Prix Unitaire', 'Sous-total']],
+      body: tableRows,
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 9 },
+    });
+
+    // Total
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(`MONTANT TOTAL : ${parseFloat(order.prix_total).toFixed(2)} $`, 130, finalY);
+
+    // Pied de page
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Merci pour votre achat ! Ce document est une preuve de transaction.", 105, 285, { align: "center" });
+
+    doc.save(`Facture_Commande_${order.id}.pdf`);
+  };
 
   useEffect(() => {
-    setMounted(true);
+    if (typeof window === "undefined") return;
 
-    // Vérification de la session (compatibilité avec anciens keys)
-    const rawUser = authUser ?? (() => { try { const s = localStorage.getItem('djephy_user') || localStorage.getItem('user'); return s ? JSON.parse(s) : null } catch (e) { return null } })();
-
-    if (!rawUser || !rawUser.id) {
-      window.location.href = '/'; // Redirection si non connecté
+    // 1. Récupération de l'utilisateur
+    const storedUser = localStorage.getItem('user') || localStorage.getItem('djephy_user');
+    
+    if (!storedUser) {
+      window.location.replace('/'); 
       return;
     }
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`http://localhost/api/dashboard.php?user_id=${rawUser.id}`);
-        const resData = await response.json();
+    try {
+      const user = JSON.parse(storedUser);
+      
+      // --- CORRECTION MAJEURE : RÉCUPÉRATION ROBUSTE DE L'ID (Table utilisateur) ---
+      const userId = user.id_utilisateur || user.id || (user.user && user.user.id_utilisateur) || (user.user && user.user.id);
 
-        if (resData.success) {
-          setData(resData);
-        } else {
-          setError(resData.message);
-        }
-      } catch (err) {
-        setError("Impossible de charger les données.");
-      } finally {
-        setLoading(false);
+      console.log("Tentative de chargement pour l'ID :", userId);
+
+      if (!userId) {
+        throw new Error("Identifiant utilisateur introuvable. Veuillez vous reconnecter.");
       }
-    };
 
-    fetchData();
-  }, [authUser]);
+      const fetchData = async () => {
+          // Appel à votre API
+          const response = await fetch(`http://127.0.0.1/api/passer_commande.php?id_utilisateur=${userId}`, {
+            method: 'GET',
+            headers: { 
+                'Cache-Control': 'no-cache',
+                'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+          
+          const resData = await response.json();
+          
+          if (resData.success) {
+            setData(resData);
+          } else {
+            setError(resData.message || "Impossible de charger vos données.");
+          }
+          setLoading(false);
+        }
 
-  // Calcul des statistiques
-  const totalDepense = useMemo(() => {
-    return data?.orders?.reduce((acc: number, curr: any) => acc + parseFloat(curr.total_paye || 0), 0) || 0;
+      fetchData();
+    } catch (e: any) {
+      console.error("Erreur de session:", e);
+      setError(e.message || "Session invalide. Veuillez vous reconnecter.");
+      setLoading(false);
+    }
+  }, []);
+
+  // --- LOGIQUE DE FILTRE ---
+  const filteredOrders = useMemo(() => {
+    if (!data?.orders || !Array.isArray(data.orders)) return [];
+    if (searchQuery.trim() === "") return data.orders;
+
+    return data.orders.filter((order: any) => 
+      (order.ville && order.ville.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (order.id && order.id.toString().includes(searchQuery)) ||
+      (order.statut && order.statut.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [data, searchQuery]);
+
+  // --- CALCUL DU TOTAL ---
+  const totalSpent = useMemo(() => {
+    if (!data?.orders || !Array.isArray(data.orders)) return "0.00";
+    return data.orders.reduce((acc: number, cur: any) => {
+      return acc + parseFloat(cur.prix_total || 0);
+    }, 0).toFixed(2);
   }, [data]);
 
-  const handleLogout = () => {
-    try { logout(); } catch (e) { localStorage.removeItem('user'); localStorage.removeItem('djephy_user'); }
-    window.location.href = '/';
-  };
+  if (loading) return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+      <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Synchronisation en cours...</p>
+    </div>
+  );
 
-  if (!mounted) return null;
+  if (error) return (
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white p-10 rounded-[3rem] border border-zinc-200 shadow-xl max-w-md">
+           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+             <Package size={32} />
+           </div>
+           <p className="font-black uppercase text-[10px] text-red-600 mb-2">Erreur système</p>
+           <p className="text-sm font-bold text-zinc-600 mb-8">{error}</p>
+           <button 
+             onClick={() => { localStorage.clear(); window.location.href = '/'; }}
+             className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase text-xs hover:bg-zinc-800 transition-all"
+           >
+             Retourner à l'accueil
+           </button>
+        </div>
+    </div>
+  );
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-black text-white' : 'bg-[#F8FAFC] text-black'} transition-colors duration-300`}>
-      
-      {/* --- BARRE DE NAVIGATION --- */}
-      <nav className={`p-4 sticky top-0 z-50 border-b ${darkMode ? 'border-white/10 bg-black/80' : 'border-black/5 bg-white/80'} backdrop-blur-md`}>
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-blue-100">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-600/30">
-              <LayoutDashboard size={20}/>
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
+              <Package size={20} className="text-white" />
             </div>
-            <span className="font-black uppercase tracking-tighter text-xl">MON<span className="text-blue-600">DASHBOARD</span></span>
+            <h1 className="text-xl font-black uppercase tracking-tighter">Mon<span className="text-blue-600">Espace</span></h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
-              {darkMode ? <Sun size={20} className="text-blue-500" /> : <Moon size={20} className="text-blue-600" />}
+
+          <div className="flex items-center gap-5">
+            <button onClick={() => window.location.href = '/'} className="flex items-center gap-2 bg-zinc-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase hover:bg-blue-600 transition-all">
+              <ShoppingBag size={14} /> Boutique
             </button>
-            <button onClick={handleLogout} className="p-2 rounded-full text-red-500 hover:bg-red-500/10 transition-colors">
-              <LogOut size={20} />
-            </button>
+
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Rechercher une commande..."
+                className="pl-10 pr-4 py-2 bg-zinc-100 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600/20 transition-all w-48 focus:w-64"
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center gap-3 border-l border-zinc-100 pl-5">
+                <span className="text-xs font-bold hidden sm:block">
+                  {data?.profile?.nom_complet || data?.profile?.nom || 'Client'}
+                </span>
+                <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-black uppercase shadow-lg shadow-blue-100">
+                    {(data?.profile?.nom_complet || data?.profile?.nom) ? (data?.profile?.nom_complet || data?.profile?.nom)[0] : 'U'}
+                </div>
+            </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto p-6">
-        
-        {/* --- SECTION STATISTIQUES RAPIDES --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className={`p-6 rounded-[2rem] border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-black/5 shadow-sm'}`}>
-            <TrendingUp className="text-blue-600 mb-2" size={24} />
-            <p className="text-[10px] uppercase font-black opacity-50">Total Dépensé</p>
-            <h3 className="text-2xl font-black">{totalDepense.toFixed(2)}$</h3>
-          </div>
-          <div className={`p-6 rounded-[2rem] border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-black/5 shadow-sm'}`}>
-            <Package className="text-blue-600 mb-2" size={24} />
-            <p className="text-[10px] uppercase font-black opacity-50">Commandes Totales</p>
-            <h3 className="text-2xl font-black">{data?.orders?.length || 0}</h3>
-          </div>
-          {/* BOUTON VERS LA BOUTIQUE */}
-          <Link href="/" className="group">
-            <div className="h-full p-6 rounded-[2rem] bg-blue-600 text-white shadow-xl shadow-blue-600/20 flex flex-col justify-center items-center gap-2 hover:bg-blue-700 transition-all active:scale-95 text-center">
-               <ShoppingBag size={28} className="group-hover:bounce" />
-               <span className="font-black uppercase text-sm tracking-widest flex items-center gap-2">
-                 Boutique <ArrowRight size={16} />
-               </span>
-            </div>
-          </Link>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
+      <main className="max-w-7xl mx-auto p-6 md:p-10">
+        <div className="grid lg:grid-cols-12 gap-10">
           
-          {/* --- COLONNE GAUCHE : PROFIL --- */}
-          <div className="space-y-6">
-            <div className={`p-8 rounded-[2.5rem] border ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} relative overflow-hidden shadow-2xl shadow-black/20`}>
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center text-white font-black text-2xl">
-                  {data?.profile?.nom?.charAt(0).toUpperCase()}
-                </div>
-                <p className="text-[10px] uppercase font-bold opacity-50 mb-1 tracking-widest">Compte Client</p>
-                <h2 className="text-2xl font-black mb-6 truncate uppercase">{data?.profile?.nom || "Utilisateur"}</h2>
-                <div className="space-y-4 text-xs">
-                  <div className="opacity-80">
-                    <p className="text-[9px] uppercase opacity-40 font-black">Email</p>
-                    <p className="font-bold">{data?.profile?.email}</p>
-                  </div>
-                  <div className={`h-px w-full ${darkMode ? 'bg-black/10' : 'bg-white/10'}`} />
-                  <p className="opacity-60 italic">Client depuis le {new Date(data?.profile?.date_inscription).toLocaleDateString()}</p>
-                </div>
+          <div className="lg:col-span-4 space-y-6">
+            <section className="bg-zinc-50 border border-zinc-100 p-8 rounded-[2.5rem]">
+              <div className="mb-8">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-2">Profil Utilisateur</p>
+                <h2 className="text-3xl font-black leading-tight truncate">
+                  {data?.profile?.nom_complet || data?.profile?.nom || 'Chargement...'}
+                </h2>
               </div>
-            </div>
+
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-2xl border border-zinc-100">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Email associé</p>
+                    <p className="text-sm font-bold truncate">{data?.profile?.email || 'N/A'}</p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-zinc-100">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Cumul des achats</p>
+                    <p className="text-sm font-black text-blue-600">{totalSpent} $</p>
+                </div>
+                
+                <button onClick={() => { localStorage.clear(); window.location.href='/'; }} className="w-full mt-4 py-4 border border-zinc-200 text-red-500 rounded-2xl font-black uppercase text-[10px] hover:bg-red-50 transition-all flex items-center justify-center gap-2">
+                    <LogOut size={16} /> Quitter la session
+                </button>
+              </div>
+            </section>
           </div>
 
-          {/* --- COLONNE DROITE : HISTORIQUE --- */}
-          <div className="lg:col-span-2">
-            <div className={`rounded-[2.5rem] border overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-black/5 shadow-sm'}`}>
-              <div className="p-6 border-b border-inherit flex flex-col md:flex-row justify-between items-center gap-4">
-                <h3 className="font-black uppercase text-sm tracking-widest">Historique</h3>
-                <div className="relative w-full md:w-64">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={14} />
-                  <input 
-                    type="text" placeholder="Filtrer par ville..." 
-                    className={`w-full pl-10 pr-4 py-3 rounded-2xl text-xs font-bold border-none outline-none ${darkMode ? 'bg-black' : 'bg-slate-50'}`}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+          <div className="lg:col-span-8">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-black uppercase tracking-tighter italic">Historique des commandes</h3>
+                <span className="bg-zinc-900 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase">
+                    {filteredOrders.length} {filteredOrders.length > 1 ? 'Commandes' : 'Commande'}
+                </span>
+            </div>
 
-              <div className="overflow-x-auto px-4 pb-4">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="text-[10px] uppercase font-black opacity-30">
-                      <th className="px-6 py-6">Réf</th>
-                      <th className="px-6 py-6">Ville</th>
-                      <th className="px-6 py-6">Montant</th>
-                      <th className="px-6 py-6 text-right">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs font-bold">
-                    {data?.orders?.filter((o:any) => o.ville.toLowerCase().includes(searchQuery.toLowerCase())).map((order: any) => (
-                      <tr key={order.id} className="border-b border-inherit last:border-0 hover:bg-blue-600/5 transition-colors group">
-                        <td className="px-6 py-6 font-black text-blue-600">#GD-{order.id}</td>
-                        <td className="px-6 py-6 uppercase opacity-70 tracking-tighter">{order.ville}</td>
-                        <td className="px-6 py-6 font-black text-sm">{order.total_paye}$</td>
-                        <td className="px-6 py-6 text-right">
-                          <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.statut === 'PAYE' ? 'bg-green-500/10 text-green-600' : 'bg-blue-600/10 text-blue-600'}`}>
-                            {order.statut === 'PAYE' ? <CheckCircle size={10}/> : <Clock size={10}/>}
-                            {order.statut}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {(!data?.orders || data.orders.length === 0) && (
-                  <div className="py-20 text-center opacity-20 text-xs font-black uppercase italic tracking-widest">
-                     Aucun achat effectué
+            <div className="space-y-4">
+              <AnimatePresence mode="popLayout">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((order: any) => (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      key={order.id}
+                      className={`bg-white border rounded-[2rem] overflow-hidden transition-all ${
+                        expandedOrder === order.id ? 'border-blue-600 shadow-xl shadow-blue-600/5' : 'border-zinc-100'
+                      }`}
+                    >
+                      <div 
+                        onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                        className="p-6 flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
+                            expandedOrder === order.id ? 'bg-blue-600 text-white' : 'bg-zinc-50 text-zinc-400'
+                          }`}>
+                            <ShoppingBag size={22} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black uppercase">COMMANDE #{order.id}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase">
+                              {order.ville || 'Ville non spécifiée'} • {order.date_commande}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-lg font-black text-blue-600">{parseFloat(order.prix_total).toFixed(2)} $</p>
+                            <div className="flex items-center justify-end gap-1 text-green-500">
+                              <CheckCircle size={10} />
+                              <span className="text-[9px] font-black uppercase">{order.statut || 'Traitée'}</span>
+                            </div>
+                          </div>
+                          <motion.div animate={{ rotate: expandedOrder === order.id ? 90 : 0 }}>
+                            <ChevronRight size={18} className="text-zinc-300" />
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      <AnimatePresence>
+                        {expandedOrder === order.id && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }} 
+                            animate={{ height: "auto", opacity: 1 }} 
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-zinc-50/50 border-t border-zinc-100"
+                          >
+                            <div className="p-6 space-y-3">
+                              <div className="flex justify-between items-center mb-4">
+                                <p className="text-[10px] font-black uppercase text-zinc-400">Détails des articles</p>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); generatePDF(order); }}
+                                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-black transition-all shadow-lg shadow-blue-100"
+                                >
+                                  <Download size={14} /> Télécharger Facture
+                                </button>
+                              </div>
+
+                              {/* AFFICHAGE DES ARTICLES - CORRIGÉ POUR VISIBILITÉ */}
+                              <div className="grid gap-2">
+                                {order.items && order.items.length > 0 ? (
+                                    order.items.map((item: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+                                        <div className="flex items-center gap-4">
+                                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">
+                                            {item.quantite}x
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-zinc-800">{item.nom_produit}</p>
+                                            <p className="text-[9px] text-zinc-400 font-bold uppercase">Prix unitaire: {parseFloat(item.prix_unitaire).toFixed(2)} $</p>
+                                        </div>
+                                        </div>
+                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * item.prix_unitaire).toFixed(2)} $</p>
+                                    </div>
+                                    ))
+                                ) : (
+                                    <div className="py-8 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
+                                        <p className="text-xs text-zinc-400 italic">Aucun détail d'article trouvé pour cette commande.</p>
+                                    </div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="py-24 text-center border-2 border-dashed border-zinc-100 rounded-[3rem]">
+                    <Search className="mx-auto text-zinc-200 mb-4" size={48} />
+                    <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Aucune commande trouvée</p>
                   </div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
           </div>
         </div>

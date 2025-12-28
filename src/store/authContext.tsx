@@ -2,20 +2,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// --- CORRECTION DU TYPE ---
-// On ajoute 'username' et 'nom' pour que TypeScript accepte ces clés partout
+// --- TYPE USER CORRIGÉ ---
+// On ajoute 'id' car il est indispensable pour vos requêtes SQL (dashboard.php?user_id=...)
 type User = {
+  id?: number | string; 
   name?: string;
   nom?: string;
-  username?: string; // Ajouté ici
+  username?: string;
   email?: string;
 } | null;
 
-// Définition des fonctions disponibles dans le context
 interface AuthContextType {
   user: User;
-  // On met à jour ici aussi pour accepter n'importe quelle structure de User
-  login: (userData: User) => void; 
+  login: (userData: any) => void; // 'any' ici permet d'accepter l'objet venant de votre API login.php
   logout: () => void;
   isLoading: boolean;
 }
@@ -28,27 +27,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Charger l'utilisateur au démarrage
   useEffect(() => {
-    const savedUser = localStorage.getItem('djephy_user');
+    // Utilisation de la clé 'user' pour être raccord avec votre Dashboard
+    const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
       } catch (error) {
         console.error("Erreur de lecture du profil utilisateur", error);
+        localStorage.removeItem('user'); // Nettoyage si le JSON est corrompu
       }
     }
     setIsLoading(false);
   }, []);
 
   // Fonction pour connecter l'utilisateur
-  const login = (userData: User) => {
+  const login = (userData: any) => {
     setUser(userData);
-    localStorage.setItem('djephy_user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   // Fonction pour déconnecter l'utilisateur
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('djephy_user');
+    localStorage.removeItem('user');
+    // Note: La redirection est gérée par la Navbar comme convenu
   };
 
   return (

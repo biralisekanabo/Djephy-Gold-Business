@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
-import { User, Search, Menu, X, Zap, ShoppingCart, LogOut } from 'lucide-react';
+import { User, Search, Menu, X, Zap, ShoppingCart, LogOut, LayoutDashboard, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -11,6 +11,7 @@ import { useCart } from '@/src/store/cartContext';
 import { useAuth } from '@/src/store/authContext';
 
 export default function Navbar() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -19,17 +20,31 @@ export default function Navbar() {
   
   const { user, logout, isLoading } = useAuth(); 
   const { totalItems } = useCart();
-  const pathname = usePathname();
   const router = useRouter();
   const { scrollY, scrollYProgress } = useScroll();
 
-  // 1. Correction Performance : Utilisation de useMotionValueEvent pour un scroll ultra-fluide
+  // --- FONCTION DE DÉCONNEXION AVEC REDIRECTION ---
+  const handleLogout = async () => {
+    try {
+      await logout(); // Supprime l'utilisateur du state et du localStorage
+      setIsMobileMenuOpen(false);
+      router.push('/'); // Redirige vers l'accueil
+      router.refresh(); // Force le rafraîchissement pour effacer les caches
+    } catch (error) {
+      console.error("Erreur déconnexion:", error);
+    }
+  };
+
+  // --- CONDITION D'AFFICHAGE UNIQUEMENT SUR L'ACCUEIL ---
+  if (pathname !== '/') {
+    return null;
+  }
+
   useMotionValueEvent(scrollY, "change", (latest) => {
     if (latest > 20 && !isScrolled) setIsScrolled(true);
     if (latest <= 20 && isScrolled) setIsScrolled(false);
   });
 
-  // 2. Correction UX : Bloquer le défilement de la page quand un menu est ouvert
   useEffect(() => {
     document.body.style.overflow = (isMobileMenuOpen || isAuthOpen) ? 'hidden' : 'unset';
   }, [isMobileMenuOpen, isAuthOpen]);
@@ -42,7 +57,7 @@ export default function Navbar() {
     const formData = new FormData(e.currentTarget);
     const query = formData.get('search');
     if (query) {
-      router.push(`/?search=${query}`); // Envoie la recherche à la page principale
+      router.push(`/?search=${query}`);
       setIsSearchOpen(false);
     }
   };
@@ -54,8 +69,6 @@ export default function Navbar() {
     { name: 'Accessoires', href: '#accessoires' },
   ];
 
-  // Note : On garde la Navbar sur toutes les pages pour la cohérence, 
-  // mais on peut changer son style si on n'est pas sur '/'
   const isHome = pathname === '/';
 
   return (
@@ -63,7 +76,6 @@ export default function Navbar() {
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
         isScrolled ? 'py-2' : 'py-6'
       }`}>
-        {/* Barre de progression */}
         <motion.div 
           className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-600 to-purple-500 origin-left"
           style={{ scaleX: scrollYProgress }}
@@ -76,7 +88,6 @@ export default function Navbar() {
             : 'bg-transparent'
           }`}>
             
-            {/* LOGO */}
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
               <motion.div 
                 whileHover={{ scale: 1.1, rotate: 5 }}
@@ -84,12 +95,15 @@ export default function Navbar() {
               >
                 <Zap size={20} className="text-white fill-white" />
               </motion.div>
-              <span className="text-lg font-black tracking-tighter uppercase italic text-slate-900 dark:text-white">
-                Djephy<span className="text-blue-600">Gold</span>
-              </span>
+              <div className="flex flex-col">
+                 <span className="text-lg font-black tracking-tighter uppercase italic text-slate-900 dark:text-white leading-none">
+                   Djephy<span className="text-blue-600">Gold</span>
+                 </span>
+                 <span className="text-[7px] font-bold uppercase tracking-[0.3em] text-blue-500 mt-0.5">Premium Store</span>
+              </div>
             </Link>
 
-            {/* NAVIGATION DESKTOP */}
+            {/* Liens Desktop */}
             <div className="hidden lg:flex items-center gap-6">
               {navLinks.map((link) => (
                 <Link 
@@ -110,10 +124,8 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* ACTIONS */}
             <div className="flex items-center gap-1 sm:gap-3">
-              
-              {/* RECHERCHE CORRIGÉE */}
+              {/* Barre de recherche */}
               <form onSubmit={handleSearch} className="relative flex items-center">
                 <AnimatePresence>
                   {isSearchOpen && (
@@ -132,17 +144,21 @@ export default function Navbar() {
                   type="button"
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                  aria-label="Toggle search"
                 >
                   {isSearchOpen ? <X size={18} /> : <Search size={18} />}
                 </button>
               </form>
 
-              {/* AUTHENTIFICATION */}
-              {!isLoading && (
+              {isLoading ? (
+                <div className="p-2"><Loader2 size={18} className="animate-spin text-blue-600" /></div>
+              ) : (
                 <>
                   {user ? (
                     <div className="flex items-center gap-2">
+                      <Link href="/dashboard" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors">
+                        <LayoutDashboard size={14} />
+                        <span className="text-[9px] font-black uppercase">Dashboard</span>
+                      </Link>
                       <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div className="w-6 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white uppercase">
                           {initial}
@@ -152,8 +168,8 @@ export default function Navbar() {
                         </span>
                       </div>
                       <button 
-                        onClick={() => logout()}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
+                        onClick={handleLogout}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"
                         title="Déconnexion"
                       >
                         <LogOut size={16} />
@@ -162,7 +178,7 @@ export default function Navbar() {
                   ) : (
                     <button 
                       onClick={() => setIsAuthOpen(true)}
-                      className="flex items-center gap-2 bg-slate-900 dark:bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:opacity-90 transition-opacity"
+                      className="flex items-center gap-2 bg-slate-900 dark:bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:shadow-blue-500/20 hover:scale-105 transition-all"
                     >
                       <User size={16} />
                       <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Compte</span>
@@ -171,7 +187,7 @@ export default function Navbar() {
                 </>
               )}
 
-              {/* PANIER */}
+              {/* Panier */}
               <div className="relative">
                 <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                   <ShoppingCart size={18} />
@@ -179,17 +195,17 @@ export default function Navbar() {
                 {totalItems > 0 && (
                   <motion.span 
                     initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 bg-blue-600 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center ring-2 ring-white dark:ring-slate-900"
                   >
                     {totalItems}
                   </motion.span>
                 )}
               </div>
 
-              {/* MOBILE TOGGLE */}
+              {/* Menu Burger Mobile */}
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 rounded-full"
+                className="lg:hidden p-2 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-blue-600 hover:text-white transition-all"
               >
                 {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -197,7 +213,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* MENU MOBILE CORRIGÉ */}
+        {/* Menu Mobile (AnimatePresence) */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
@@ -206,25 +222,35 @@ export default function Navbar() {
             >
               <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
                 {user && (
-                   <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-black">{initial}</div>
-                      <div>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connecté</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{displayNom}</p>
+                   <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-black">{initial}</div>
+                        <div>
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connecté</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white">{displayNom}</p>
+                        </div>
                       </div>
+                      <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                        <LayoutDashboard size={20} />
+                      </Link>
                    </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   {navLinks.map((link) => (
                     <Link key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)}
-                      className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-center text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                      className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-center text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors">
                       {link.name}
                     </Link>
                   ))}
                 </div>
-                {!user && (
+                {user ? (
+                   <button onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/10 text-red-500 py-4 rounded-2xl font-black uppercase tracking-widest text-xs border border-red-100 dark:border-red-900/20">
+                    <LogOut size={16} /> Déconnexion
+                  </button>
+                ) : (
                   <button onClick={() => { setIsAuthOpen(true); setIsMobileMenuOpen(false); }}
-                    className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs">
+                    className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-blue-500/30">
                     Espace Client
                   </button>
                 )}
@@ -234,7 +260,7 @@ export default function Navbar() {
         </AnimatePresence>
       </nav>
 
-      {/* MODAL AUTH */}
+      {/* Modal Auth */}
       <AnimatePresence>
         {isAuthOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
