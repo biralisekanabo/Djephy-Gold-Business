@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PlusCircle, LayoutDashboard, Image as ImageIcon, Loader2, 
   Sparkles, Menu, X, Upload, Trash2, Edit3, 
-  LogOut, ShoppingBag, Calendar, User, DollarSign,
-  CheckCircle2, Phone, MapPin, Package, TrendingUp,
-  Monitor, Battery, Cpu, FileText, Download 
+  LogOut, ShoppingBag, User, Phone, MapPin, Package, TrendingUp,
+  Monitor, Battery, Cpu, FileText, Download,CheckCircle2 
 } from 'lucide-react';
 
 import jsPDF from 'jspdf';
@@ -77,9 +76,9 @@ export default function AdminPage() {
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
-    doc.text("Résumé de l'Activité", 14, 55);
+    doc.text("Résumé de l&apos;Activité", 14, 55);
     doc.setFontSize(11);
-    doc.text(`Chiffre d'Affaires Total (Livré): ${CA.toLocaleString()} $`, 14, 65);
+    doc.text(`Chiffre d&apos;Affaires Total (Livré): ${CA.toLocaleString()} $`, 14, 65);
     doc.text(`Total produits en catalogue: ${products.length}`, 14, 72);
     doc.text(`Unités totales en stock: ${totalStock}`, 14, 79);
 
@@ -91,6 +90,7 @@ export default function AdminPage() {
       headStyles: { fillColor: [37, 99, 235] },
     });
 
+    // Utilisation sécurisée de lastAutoTable
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
     const lastY = finalY + 15;
     doc.text("Historique des Commandes Récentes", 14, lastY);
@@ -119,7 +119,7 @@ export default function AdminPage() {
       setAuthorized(true);
       fetchProducts();
       fetchOrders(); 
-    } catch (e) {
+    } catch {
       window.location.href = '/';
     }
   }, []);
@@ -129,7 +129,7 @@ export default function AdminPage() {
       const res = await fetch('http://localhost/api/admin_manage.php?action=list');
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
-    } catch (e) {
+    } catch {
       console.error("Erreur de chargement produits");
       setProducts([]);
     } finally {
@@ -142,7 +142,7 @@ export default function AdminPage() {
       const res = await fetch('http://localhost/api/admin_manage.php?action=list_orders');
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
-    } catch (e) {
+    } catch {
       console.error("Erreur de chargement commandes");
       setOrders([]);
     }
@@ -178,7 +178,7 @@ export default function AdminPage() {
       if (data.success) {
         fetchOrders(); 
       }
-    } catch (e) {
+    } catch {
       alert("Erreur de mise à jour");
     }
   };
@@ -198,7 +198,7 @@ export default function AdminPage() {
       if (data.success) {
         fetchOrders(); 
       }
-    } catch (e) {
+    } catch {
       alert("Erreur lors de la suppression de la commande");
     }
   };
@@ -237,7 +237,7 @@ export default function AdminPage() {
         fetchProducts();
         alert(editingId ? "Produit mis à jour !" : "Produit ajouté à la boutique !");
       }
-    } catch (error) {
+    } catch {
       alert("Erreur serveur");
     } finally {
       setLoading(false);
@@ -256,7 +256,7 @@ export default function AdminPage() {
         if (data.success) {
             fetchProducts();
         }
-    } catch (e) {
+    } catch {
         alert("Erreur lors de la suppression");
     }
   };
@@ -296,7 +296,7 @@ export default function AdminPage() {
             <FileText size={18} /> Rapports
           </button>
 
-          <button type="button" onClick={() => window.location.href = '/'} className="flex items-center gap-3 w-full p-4 rounded-2xl text-zinc-400 hover:bg-zinc-900 font-bold text-xs uppercase tracking-widest transition-all">
+          <button type="button" onClick={() => { window.location.href = '/'; }} className="flex items-center gap-3 w-full p-4 rounded-2xl text-zinc-400 hover:bg-zinc-900 font-bold text-xs uppercase tracking-widest transition-all">
             <LayoutDashboard size={18} /> Boutique Live
           </button>
         </nav>
@@ -344,7 +344,7 @@ export default function AdminPage() {
                 {editingId && (
                   <div className="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
                     <p className="text-[10px] font-black text-blue-600 uppercase">Mode Édition Activé</p>
-                    <button type="button" onClick={() => {setEditingId(null); setNewProduct({nom:'', prix:'', cat:'Phone', stock:'', image:'', ecran:'', batterie:'', stockage:''})}} className="text-[10px] font-bold text-red-500 uppercase underline">Annuler</button>
+                    <button type="button" onClick={() => {setEditingId(null); setNewProduct({nom:'', prix:'', cat:'Phone', stock:'', image:'', ecran:'', batterie:'', stockage:''});}} className="text-[10px] font-bold text-red-500 uppercase underline">Annuler</button>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-6">
@@ -358,18 +358,18 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Monitor size={10}/> Écran</label>
-                    <input placeholder="6.7' OLED" value={newProduct.ecran} onChange={e => setNewProduct({...newProduct, ecran: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
-                   </div>
-                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Battery size={10}/> Batterie</label>
-                    <input placeholder="5000 mAh" value={newProduct.batterie} onChange={e => setNewProduct({...newProduct, batterie: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
-                   </div>
-                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Cpu size={10}/> Stockage</label>
-                    <input placeholder="256 GB" value={newProduct.stockage} onChange={e => setNewProduct({...newProduct, stockage: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
-                   </div>
+                    <div className="space-y-2">
+                     <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Monitor size={10}/> Écran</label>
+                     <input placeholder="6.7&apos; OLED" value={newProduct.ecran} onChange={e => setNewProduct({...newProduct, ecran: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                     <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Battery size={10}/> Batterie</label>
+                     <input placeholder="5000 mAh" value={newProduct.batterie} onChange={e => setNewProduct({...newProduct, batterie: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                     <label className="text-[10px] font-black text-zinc-400 uppercase flex items-center gap-1"><Cpu size={10}/> Stockage</label>
+                     <input placeholder="256 GB" value={newProduct.stockage} onChange={e => setNewProduct({...newProduct, stockage: e.target.value})} className="w-full p-3 bg-zinc-50 rounded-xl border border-zinc-100 outline-none text-xs font-bold" />
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -528,7 +528,7 @@ export default function AdminPage() {
                   </div>
                   <h2 className="text-2xl font-black italic">Centre de Rapports Analytiques</h2>
                   <p className="text-zinc-400 text-sm max-w-md mx-auto font-medium">
-                    Générez un document PDF complet incluant l'état de votre inventaire, votre chiffre d'affaires et l'historique complet des transactions livrées.
+                    Générez un document PDF complet incluant l&apos;état de votre inventaire, votre chiffre d&apos;affaires et l&apos;historique complet des transactions livrées.
                   </p>
                   <button 
                     onClick={generateGlobalReport}
@@ -541,17 +541,17 @@ export default function AdminPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Top Performance</p>
-                    <p className="text-xs font-bold text-zinc-400 uppercase">Produit le plus en stock :</p>
+                    <p className="text-xs font-bold text-zinc-400 uppercase">{"Produit le plus en stock :"}</p>
                     <p className="text-xl font-black italic mt-1">
                         {products.length > 0 ? [...products].sort((a,b) => {
                            const stockA = typeof a.stock === 'string' ? parseInt(a.stock) : a.stock;
                            const stockB = typeof b.stock === 'string' ? parseInt(b.stock) : b.stock;
                            return stockB - stockA;
-                        })[0].nom : 'N/A'}
+                        })[0].nom : 'N/A'};
                     </p>
                   </div>
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
-                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-4">Volume d'activité</p>
+                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-4">Volume d&apos;activité</p>
                     <p className="text-xs font-bold text-zinc-400 uppercase">Commandes traitées :</p>
                     <p className="text-xl font-black italic mt-1">{orders.length} transactions</p>
                   </div>

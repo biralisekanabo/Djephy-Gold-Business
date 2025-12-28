@@ -75,8 +75,8 @@ export default function DashboardPage() {
     const tableRows = (order.items || []).map((item) => [
       item.nom_produit,
       item.quantite.toString(),
-      `${parseFloat(item.prix_unitaire as string).toFixed(2)} $`,
-      `${(item.quantite * parseFloat(item.prix_unitaire as string)).toFixed(2)} $`
+      `${parseFloat(String(item.prix_unitaire)).toFixed(2)} $`,
+      `${(item.quantite * parseFloat(String(item.prix_unitaire))).toFixed(2)} $`
     ]);
 
     autoTable(doc, {
@@ -91,7 +91,7 @@ export default function DashboardPage() {
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.text(`MONTANT TOTAL : ${parseFloat(order.prix_total as string).toFixed(2)} $`, 130, finalY);
+    doc.text(`MONTANT TOTAL : ${parseFloat(String(order.prix_total)).toFixed(2)} $`, 130, finalY);
 
     // Pied de page
     doc.setFontSize(8);
@@ -114,7 +114,7 @@ export default function DashboardPage() {
         }
 
         const user = JSON.parse(storedUser);
-        // Extraction robuste de l'ID
+        // Extraction robuste de l'ID (Adaptation : gestion des objets imbriqués ou directs)
         const userId = user.id_utilisateur || user.id || user.user?.id_utilisateur || user.user?.id;
 
         if (!userId) {
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
   const totalSpent = useMemo(() => {
     if (!data?.orders) return "0.00";
-    return data.orders.reduce((acc, cur) => acc + parseFloat(cur.prix_total as string || "0"), 0).toFixed(2);
+    return data.orders.reduce((acc, cur) => acc + parseFloat(String(cur.prix_total || "0")), 0).toFixed(2);
   }, [data]);
 
   if (loading) return (
@@ -307,7 +307,7 @@ export default function DashboardPage() {
 
                         <div className="flex items-center gap-6">
                           <div className="text-right">
-                            <p className="text-lg font-black text-blue-600">{parseFloat(order.prix_total as string).toFixed(2)} $</p>
+                            <p className="text-lg font-black text-blue-600">{parseFloat(String(order.prix_total)).toFixed(2)} $</p>
                             <div className="flex items-center justify-end gap-1 text-green-500">
                               <CheckCircle size={10} />
                               <span className="text-[9px] font-black uppercase">{order.statut}</span>
@@ -348,10 +348,10 @@ export default function DashboardPage() {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-zinc-800">{item.nom_produit}</p>
-                                                <p className="text-[9px] text-zinc-400 font-bold uppercase">Unit: {parseFloat(item.prix_unitaire as string).toFixed(2)} $</p>
+                                                <p className="text-[9px] text-zinc-400 font-bold uppercase">Unit: {parseFloat(String(item.prix_unitaire)).toFixed(2)} $</p>
                                             </div>
                                         </div>
-                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * parseFloat(item.prix_unitaire as string)).toFixed(2)} $</p>
+                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * parseFloat(String(item.prix_unitaire))).toFixed(2)} $</p>
                                     </div>
                                     ))
                                 ) : (
