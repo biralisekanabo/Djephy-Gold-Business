@@ -58,7 +58,10 @@ export default function AdminPage() {
     .filter(o => o.status === 'Livré')
     .reduce((acc, curr) => acc + parseFloat(curr.total_price || "0"), 0);
     
-  const totalStock = products.reduce((acc, curr) => acc + parseInt(curr.stock.toString() || "0"), 0);
+  const totalStock = products.reduce((acc, curr) => {
+    const val = typeof curr.stock === 'string' ? parseInt(curr.stock) : curr.stock;
+    return acc + (isNaN(val) ? 0 : val);
+  }, 0);
 
   const generateGlobalReport = () => {
     const doc = new jsPDF();
@@ -88,7 +91,7 @@ export default function AdminPage() {
       headStyles: { fillColor: [37, 99, 235] },
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY || 150;
+    const finalY = (doc as any).lastAutoTable?.finalY || 150;
     const lastY = finalY + 15;
     doc.text("Historique des Commandes Récentes", 14, lastY);
     autoTable(doc, {
@@ -410,7 +413,7 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-4">
                   <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 px-2">Liste du Catalogue</h3>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 overflow-x-hidden">
                     <AnimatePresence>
                       {products.map((p) => (
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={p.id} className="bg-white p-3 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between group">
@@ -540,7 +543,11 @@ export default function AdminPage() {
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Top Performance</p>
                     <p className="text-xs font-bold text-zinc-400 uppercase">Produit le plus en stock :</p>
                     <p className="text-xl font-black italic mt-1">
-                        {products.length > 0 ? [...products].sort((a,b) => parseInt(b.stock.toString()) - parseInt(a.stock.toString()))[0].nom : 'N/A'}
+                        {products.length > 0 ? [...products].sort((a,b) => {
+                           const stockA = typeof a.stock === 'string' ? parseInt(a.stock) : a.stock;
+                           const stockB = typeof b.stock === 'string' ? parseInt(b.stock) : b.stock;
+                           return stockB - stockA;
+                        })[0].nom : 'N/A'}
                     </p>
                   </div>
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">

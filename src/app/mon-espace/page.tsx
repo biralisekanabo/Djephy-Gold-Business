@@ -5,23 +5,49 @@ import {
   Package, LogOut, Search, ShoppingBag,
   ChevronRight, CheckCircle, Loader2, Download 
 } from 'lucide-react';
-// Importations pour le PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// --- TYPES ---
+interface OrderItem {
+  nom_produit: string;
+  quantite: number;
+  prix_unitaire: string | number;
+}
+
+interface Order {
+  id: number;
+  ville: string;
+  date_commande: string;
+  statut: string;
+  prix_total: string | number;
+  items: OrderItem[];
+}
+
+interface UserData {
+  success: boolean;
+  message?: string;
+  profile: {
+    nom_complet?: string;
+    nom?: string;
+    email?: string;
+  };
+  orders: Order[];
+}
+
 export default function DashboardPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
-  // --- NOUVELLE FONCTION : GÉNÉRATION DE FACTURE PDF ---
-  const generatePDF = (order: any) => {
+  // --- GÉNÉRATION DE FACTURE PDF ---
+  const generatePDF = (order: Order) => {
     const doc = new jsPDF();
     
-    // En-tête stylisé
-    doc.setFillColor(37, 99, 235); // Bleu royal
+    // En-tête
+    doc.setFillColor(37, 99, 235);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
@@ -36,7 +62,6 @@ export default function DashboardPage() {
     doc.setFont("helvetica", "bold");
     doc.text("DESTINATAIRE :", 15, 55);
     doc.setFont("helvetica", "normal");
-    // ADAPTATION : nom_complet
     doc.text(`${data?.profile?.nom_complet || data?.profile?.nom || 'Client'}`, 15, 62);
     doc.text(`${data?.profile?.email || ''}`, 15, 68);
     doc.text(`Ville : ${order.ville || 'Non précisée'}`, 15, 74);
@@ -47,12 +72,11 @@ export default function DashboardPage() {
     doc.text("Ma Boutique en Ligne", 140, 62);
     doc.text(`Date : ${order.date_commande}`, 140, 68);
 
-    // Tableau des articles
-    const tableRows = (order.items || []).map((item: any) => [
+    const tableRows = (order.items || []).map((item) => [
       item.nom_produit,
       item.quantite.toString(),
-      `${parseFloat(item.prix_unitaire).toFixed(2)} $`,
-      `${(item.quantite * item.prix_unitaire).toFixed(2)} $`
+      `${parseFloat(item.prix_unitaire as string).toFixed(2)} $`,
+      `${(item.quantite * parseFloat(item.prix_unitaire as string)).toFixed(2)} $`
     ]);
 
     autoTable(doc, {
@@ -63,11 +87,11 @@ export default function DashboardPage() {
       styles: { fontSize: 9 },
     });
 
-    // Total
+    // Total - Correction du positionnement
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.text(`MONTANT TOTAL : ${parseFloat(order.prix_total).toFixed(2)} $`, 130, finalY);
+    doc.text(`MONTANT TOTAL : ${parseFloat(order.prix_total as string).toFixed(2)} $`, 130, finalY);
 
     // Pied de page
     doc.setFontSize(8);
@@ -78,42 +102,35 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    let isMounted = true;
 
-    // 1. Récupération de l'utilisateur
-    const storedUser = localStorage.getItem('user') || localStorage.getItem('djephy_user');
-    
-    if (!storedUser) {
-      window.location.replace('/'); 
-      return;
-    }
+    const loadDashboard = async () => {
+      try {
+        const storedUser = localStorage.getItem('user') || localStorage.getItem('djephy_user');
+        
+        if (!storedUser) {
+          window.location.replace('/');
+          return;
+        }
 
-    try {
-      const user = JSON.parse(storedUser);
-      
-      // --- CORRECTION MAJEURE : RÉCUPÉRATION ROBUSTE DE L'ID (Table utilisateur) ---
-      const userId = user.id_utilisateur || user.id || (user.user && user.user.id_utilisateur) || (user.user && user.user.id);
+        const user = JSON.parse(storedUser);
+        // Extraction robuste de l'ID
+        const userId = user.id_utilisateur || user.id || user.user?.id_utilisateur || user.user?.id;
 
-      console.log("Tentative de chargement pour l'ID :", userId);
+        if (!userId) {
+          throw new Error("Identifiant utilisateur introuvable.");
+        }
 
-      if (!userId) {
-        throw new Error("Identifiant utilisateur introuvable. Veuillez vous reconnecter.");
-      }
+        const response = await fetch(`http://127.0.0.1/api/passer_commande.php?id_utilisateur=${userId}`, {
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' }
+        });
 
-      const fetchData = async () => {
-          // Appel à votre API
-          const response = await fetch(`http://127.0.0.1/api/passer_commande.php?id_utilisateur=${userId}`, {
-            method: 'GET',
-            headers: { 
-                'Cache-Control': 'no-cache',
-                'Accept': 'application/json'
-            }
-          });
-          
-          if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
-          
-          const resData = await response.json();
-          
+        if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+        
+        const resData: UserData = await response.json();
+        
+        if (isMounted) {
           if (resData.success) {
             setData(resData);
           } else {
@@ -121,39 +138,41 @@ export default function DashboardPage() {
           }
           setLoading(false);
         }
+      } catch (e: any) {
+        if (isMounted) {
+          console.error("Erreur de session:", e);
+          setError(e.message || "Session invalide.");
+          setLoading(false);
+        }
+      }
+    };
 
-      fetchData();
-    } catch (e: any) {
-      console.error("Erreur de session:", e);
-      setError(e.message || "Session invalide. Veuillez vous reconnecter.");
-      setLoading(false);
-    }
+    loadDashboard();
+    return () => { isMounted = false; };
   }, []);
 
-  // --- LOGIQUE DE FILTRE ---
+  // --- FILTRES ---
   const filteredOrders = useMemo(() => {
     if (!data?.orders || !Array.isArray(data.orders)) return [];
-    if (searchQuery.trim() === "") return data.orders;
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return data.orders;
 
-    return data.orders.filter((order: any) => 
-      (order.ville && order.ville.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (order.id && order.id.toString().includes(searchQuery)) ||
-      (order.statut && order.statut.toLowerCase().includes(searchQuery.toLowerCase()))
+    return data.orders.filter((order) => 
+      order.ville?.toLowerCase().includes(query) ||
+      order.id.toString().includes(query) ||
+      order.statut?.toLowerCase().includes(query)
     );
   }, [data, searchQuery]);
 
-  // --- CALCUL DU TOTAL ---
   const totalSpent = useMemo(() => {
-    if (!data?.orders || !Array.isArray(data.orders)) return "0.00";
-    return data.orders.reduce((acc: number, cur: any) => {
-      return acc + parseFloat(cur.prix_total || 0);
-    }, 0).toFixed(2);
+    if (!data?.orders) return "0.00";
+    return data.orders.reduce((acc, cur) => acc + parseFloat(cur.prix_total as string || "0"), 0).toFixed(2);
   }, [data]);
 
   if (loading) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center">
       <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Synchronisation en cours...</p>
+      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Synchronisation...</p>
     </div>
   );
 
@@ -180,7 +199,7 @@ export default function DashboardPage() {
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
+            <div className="bg-blue-600 p-2 rounded-xl">
               <Package size={20} className="text-white" />
             </div>
             <h1 className="text-xl font-black uppercase tracking-tighter">Mon<span className="text-blue-600">Espace</span></h1>
@@ -195,7 +214,7 @@ export default function DashboardPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input 
                 type="text" 
-                placeholder="Rechercher une commande..."
+                placeholder="Rechercher..."
                 className="pl-10 pr-4 py-2 bg-zinc-100 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600/20 transition-all w-48 focus:w-64"
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -205,8 +224,8 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold hidden sm:block">
                   {data?.profile?.nom_complet || data?.profile?.nom || 'Client'}
                 </span>
-                <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-black uppercase shadow-lg shadow-blue-100">
-                    {(data?.profile?.nom_complet || data?.profile?.nom) ? (data?.profile?.nom_complet || data?.profile?.nom)[0] : 'U'}
+                <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-black uppercase">
+                    {(data?.profile?.nom_complet || data?.profile?.nom)?.[0] || 'U'}
                 </div>
             </div>
           </div>
@@ -216,12 +235,12 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto p-6 md:p-10">
         <div className="grid lg:grid-cols-12 gap-10">
           
-          <div className="lg:col-span-4 space-y-6">
+          <aside className="lg:col-span-4 space-y-6">
             <section className="bg-zinc-50 border border-zinc-100 p-8 rounded-[2.5rem]">
               <div className="mb-8">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-2">Profil Utilisateur</p>
                 <h2 className="text-3xl font-black leading-tight truncate">
-                  {data?.profile?.nom_complet || data?.profile?.nom || 'Chargement...'}
+                  {data?.profile?.nom_complet || data?.profile?.nom || 'Utilisateur'}
                 </h2>
               </div>
 
@@ -236,16 +255,19 @@ export default function DashboardPage() {
                     <p className="text-sm font-black text-blue-600">{totalSpent} $</p>
                 </div>
                 
-                <button onClick={() => { localStorage.clear(); window.location.href='/'; }} className="w-full mt-4 py-4 border border-zinc-200 text-red-500 rounded-2xl font-black uppercase text-[10px] hover:bg-red-50 transition-all flex items-center justify-center gap-2">
+                <button 
+                    onClick={() => { localStorage.clear(); window.location.href='/'; }} 
+                    className="w-full mt-4 py-4 border border-zinc-200 text-red-500 rounded-2xl font-black uppercase text-[10px] hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+                >
                     <LogOut size={16} /> Quitter la session
                 </button>
               </div>
             </section>
-          </div>
+          </aside>
 
           <div className="lg:col-span-8">
             <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black uppercase tracking-tighter italic">Historique des commandes</h3>
+                <h3 className="text-xl font-black uppercase tracking-tighter italic">Historique</h3>
                 <span className="bg-zinc-900 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase">
                     {filteredOrders.length} {filteredOrders.length > 1 ? 'Commandes' : 'Commande'}
                 </span>
@@ -254,7 +276,7 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <AnimatePresence mode="popLayout">
                 {filteredOrders.length > 0 ? (
-                  filteredOrders.map((order: any) => (
+                  filteredOrders.map((order) => (
                     <motion.div
                       layout
                       initial={{ opacity: 0, y: 10 }}
@@ -278,17 +300,17 @@ export default function DashboardPage() {
                           <div>
                             <p className="text-sm font-black uppercase">COMMANDE #{order.id}</p>
                             <p className="text-[10px] text-zinc-400 font-bold uppercase">
-                              {order.ville || 'Ville non spécifiée'} • {order.date_commande}
+                              {order.ville} • {order.date_commande}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-6">
                           <div className="text-right">
-                            <p className="text-lg font-black text-blue-600">{parseFloat(order.prix_total).toFixed(2)} $</p>
+                            <p className="text-lg font-black text-blue-600">{parseFloat(order.prix_total as string).toFixed(2)} $</p>
                             <div className="flex items-center justify-end gap-1 text-green-500">
                               <CheckCircle size={10} />
-                              <span className="text-[9px] font-black uppercase">{order.statut || 'Traitée'}</span>
+                              <span className="text-[9px] font-black uppercase">{order.statut}</span>
                             </div>
                           </div>
                           <motion.div animate={{ rotate: expandedOrder === order.id ? 90 : 0 }}>
@@ -310,33 +332,30 @@ export default function DashboardPage() {
                                 <p className="text-[10px] font-black uppercase text-zinc-400">Détails des articles</p>
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); generatePDF(order); }}
-                                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-black transition-all shadow-lg shadow-blue-100"
+                                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-black transition-all"
                                 >
-                                  <Download size={14} /> Télécharger Facture
+                                  <Download size={14} /> Facture
                                 </button>
                               </div>
 
-                              {/* AFFICHAGE DES ARTICLES - CORRIGÉ POUR VISIBILITÉ */}
                               <div className="grid gap-2">
                                 {order.items && order.items.length > 0 ? (
-                                    order.items.map((item: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+                                    order.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-zinc-100">
                                         <div className="flex items-center gap-4">
-                                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">
-                                            {item.quantite}x
+                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">
+                                                {item.quantite}x
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-zinc-800">{item.nom_produit}</p>
+                                                <p className="text-[9px] text-zinc-400 font-bold uppercase">Unit: {parseFloat(item.prix_unitaire as string).toFixed(2)} $</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-zinc-800">{item.nom_produit}</p>
-                                            <p className="text-[9px] text-zinc-400 font-bold uppercase">Prix unitaire: {parseFloat(item.prix_unitaire).toFixed(2)} $</p>
-                                        </div>
-                                        </div>
-                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * item.prix_unitaire).toFixed(2)} $</p>
+                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * parseFloat(item.prix_unitaire as string)).toFixed(2)} $</p>
                                     </div>
                                     ))
                                 ) : (
-                                    <div className="py-8 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
-                                        <p className="text-xs text-zinc-400 italic">Aucun détail d'article trouvé pour cette commande.</p>
-                                    </div>
+                                    <p className="py-4 text-center text-xs text-zinc-400 italic">Aucun détail disponible.</p>
                                 )}
                               </div>
                             </div>
@@ -348,7 +367,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="py-24 text-center border-2 border-dashed border-zinc-100 rounded-[3rem]">
                     <Search className="mx-auto text-zinc-200 mb-4" size={48} />
-                    <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Aucune commande trouvée</p>
+                    <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Aucune commande</p>
                   </div>
                 )}
               </AnimatePresence>
