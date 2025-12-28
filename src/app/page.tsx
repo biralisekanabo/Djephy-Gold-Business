@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { 
   ShoppingCart, Zap, X, ShoppingBag, 
   CheckCircle2, Plus, Minus, Trash2, MessageCircle, Box, Search, Star,
-  CreditCard, Smartphone, Monitor, Battery,  
+  CreditCard, Smartphone, Monitor, Battery,   
 } from 'lucide-react';
 
 // --- Types ---
@@ -28,6 +29,19 @@ interface CartItem extends Produit {
   quantity: number;
 }
 
+// Type pour les produits venant de l'API PHP
+interface RawDbProduct {
+  id: string | number;
+  nom: string;
+  prix: string;
+  image: string;
+  cat: "PC" | "Phone" | "Watch" | "Radio";
+  stock: string;
+  ecran?: string;
+  batterie?: string;
+  stockage?: string;
+}
+
 // --- Configuration ---
 const WHATSAPP_NUMBER = "243991098942"; 
 const FREE_SHIPPING_THRESHOLD = 100; 
@@ -36,10 +50,9 @@ const SHIPPING_COSTS: Record<string, number> = {
   "Butembo": 0,
   "Goma": 5,
   "Beni": 15,
-  "Bunia":20
+  "Bunia": 20
 };
 
-// --- Données Statiques Originales ---
 const imagesSlider = [
   "/1665404376883_macbook_pro_jpg.jpg", 
   "/3234ccba938f41e8beebb8044a83d01b.jpg",
@@ -66,22 +79,21 @@ export default function DjephyGoldBusiness() {
   const [recentSale, setRecentSale] = useState<{name: string, city: string} | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState({ nom: "", ville: Object.keys(SHIPPING_COSTS)[0], adresse: "" });
   const [isCartWiggling, setIsCartWiggling] = useState(false);
   const [showAddedTooltip, setShowAddedTooltip] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'whatsapp' | 'card'>('whatsapp');
-  
-  // --- ÉTAT POUR LES PRODUITS DE LA BDD ---
   const [dbProducts, setDbProducts] = useState<Produit[]>([]);
 
-  // --- CHARGEMENT DES PRODUITS ---
+  // Simulation/Placeholder pour isDarkMode si non fourni par un contexte
+  const isDarkMode = false; 
+
   const fetchLiveProducts = async () => {
       try {
         const res = await fetch('http://localhost/api/admin_manage.php?action=list');
         const data = await res.json();
         if (Array.isArray(data)) {
-          const formatted = data.map((p: any) => ({
+          const formatted = data.map((p: RawDbProduct) => ({
             id: `db-${p.id}`,
             nom: p.nom,
             prix: parseFloat(p.prix),
@@ -96,14 +108,15 @@ export default function DjephyGoldBusiness() {
           }));
           setDbProducts(formatted);
         }
-      } catch (e) { console.error("Erreur chargement produits BDD"); }
+      } catch { 
+        console.error("Erreur chargement produits BDD"); 
+      }
     };
 
   useEffect(() => {
     fetchLiveProducts();
   }, []);
 
-  // --- FUSION ---
   const ALL_PRODUCTS = useMemo(() => {
     return [...dbProducts, ...PROD_DATA];
   }, [dbProducts]);
@@ -117,7 +130,6 @@ export default function DjephyGoldBusiness() {
     localStorage.setItem('djephy_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Logic pour les ventes récentes
   useEffect(() => {
     const sales = [
       { name: "iPhone 13", city: "Goma" },
@@ -131,7 +143,6 @@ export default function DjephyGoldBusiness() {
     return () => clearInterval(interval);
   }, []);
 
-  // Logic pour le slider
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev === imagesSlider.length - 1 ? 0 : prev + 1));
@@ -185,14 +196,10 @@ export default function DjephyGoldBusiness() {
     });
   }, [filter, searchQuery, ALL_PRODUCTS]);
 
-  // --- SAUVEGARDE EN BDD (CORRIGÉ POUR ID DYNAMIQUE) ---
   const saveToDatabase = async () => {
     try {
-      // 1. RÉCUPÉRATION DE L'ID RÉEL DE L'UTILISATEUR CONNECTÉ
       const storedUser = localStorage.getItem('user');
       const userData = storedUser ? JSON.parse(storedUser) : null;
-      
-      // On récupère l'id_utilisateur dynamiquement depuis l'objet stocké
       const currentUserId = userData?.id_utilisateur || userData?.id || 1;
 
       const formattedItems = cart.map(item => ({
@@ -205,7 +212,7 @@ export default function DjephyGoldBusiness() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_utilisateur: currentUserId, // UTILISATION DE L'ID DYNAMIQUE ICI
+          id_utilisateur: currentUserId,
           nom_destinataire: deliveryInfo.nom, 
           ville_livraison: deliveryInfo.ville,
           total_paye: totalCartPrice, 
@@ -214,16 +221,13 @@ export default function DjephyGoldBusiness() {
       });
 
       const result = await response.json();
-      
       if (!result.success) {
         alert("Erreur BDD : " + result.message);
         return false;
       }
-      
       fetchLiveProducts();
       return true;
-    } catch (error) {
-      console.error("Erreur BDD:", error);
+    } catch {
       alert("Erreur de connexion au serveur");
       return false;
     }
@@ -274,17 +278,25 @@ export default function DjephyGoldBusiness() {
               Le futur <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">à votre portée.</span>
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-lg max-w-sm mb-10 leading-relaxed font-medium">
-              Vive l'expérience Djephy Gold : Des produits authentiques livrés où que vous soyez.
+              Vive l&apos;expérience Djephy Gold : Des produits authentiques livrés où que vous soyez.
             </p>
           </motion.div>
 
           <div className="relative h-[400px] bg-white dark:bg-slate-800 rounded-[3rem] overflow-hidden shadow-2xl border-[8px] border-white dark:border-slate-800">
             <AnimatePresence mode="wait">
-              <motion.img
-                key={index} src={imagesSlider[index]}
+              <motion.div
+                key={index}
                 initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.8 }} className="absolute inset-0 w-full h-full object-cover"
-              />
+                transition={{ duration: 0.8 }} className="absolute inset-0 w-full h-full"
+              >
+                <Image 
+                  src={imagesSlider[index]} 
+                  alt="Slider High-Tech" 
+                  fill 
+                  className="object-cover" 
+                  priority={index === 0}
+                />
+              </motion.div>
             </AnimatePresence>
           </div>
         </div>
@@ -294,11 +306,10 @@ export default function DjephyGoldBusiness() {
       <section id="catalog" className={`py-20 px-8 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
         <div className="max-w-7xl mx-auto">
           
-          {/* BANNIERE PROMO */}
           <div className="mb-12 p-8 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
               <div className="relative z-10 text-center md:text-left">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter">Offres Gold de la semaine</h3>
-                <p className="opacity-80 text-sm font-medium">Profitez de la livraison gratuite dès 100$ d'achat</p>
+                <p className="opacity-80 text-sm font-medium">Profitez de la livraison gratuite dès 100$ d&apos;achat</p>
               </div>
               <div className="flex gap-4 relative z-10">
                 {['05', '12', '44'].map((v, i) => (
@@ -365,9 +376,11 @@ export default function DjephyGoldBusiness() {
                     </button>
 
                     <div className="relative overflow-hidden rounded-2xl h-52 mb-4 bg-slate-200 dark:bg-slate-700">
-                      <img 
-                        src={prod.img} alt={prod.nom} 
-                        className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ${prod.stock <= 0 ? 'grayscale' : ''}`} 
+                      <Image 
+                        src={prod.img} 
+                        alt={prod.nom} 
+                        fill
+                        className={`object-cover group-hover:scale-110 transition-transform duration-700 ${prod.stock <= 0 ? 'grayscale' : ''}`} 
                       />
                       {prod.tag && <div className="absolute bottom-3 left-3 bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest">{prod.tag}</div>}
                       <div className="absolute bottom-3 right-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-black shadow-sm text-blue-600">
@@ -427,7 +440,9 @@ export default function DjephyGoldBusiness() {
                 {compareList.map(p => (
                   <div key={p.id} className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <img src={p.img} className="w-10 h-10 object-cover rounded-lg" />
+                      <div className="relative w-10 h-10 overflow-hidden rounded-lg">
+                        <Image src={p.img} alt={p.nom} fill className="object-cover" />
+                      </div>
                       <span className="font-bold text-[11px] uppercase truncate">{p.nom}</span>
                     </div>
                     <div className="space-y-1 text-[10px] font-bold uppercase opacity-60">
@@ -450,7 +465,7 @@ export default function DjephyGoldBusiness() {
           <motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 20, opacity: 1 }} exit={{ x: -100, opacity: 0 }} className="fixed bottom-10 left-0 z-[100] bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-2xl border dark:border-slate-700 flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-full text-white"><ShoppingBag size={16}/></div>
             <div>
-              <p className="text-[10px] font-bold leading-tight">Vendu à l'instant !</p>
+              <p className="text-[10px] font-bold leading-tight">Vendu à l&apos;instant !</p>
               <p className="text-[9px] opacity-60 uppercase">{recentSale.name} expédié à {recentSale.city}</p>
             </div>
           </motion.div>
@@ -484,7 +499,9 @@ export default function DjephyGoldBusiness() {
                     <div className="space-y-4">
                       {cart.map((item) => (
                         <div key={item.id} className={`flex gap-4 p-4 ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'} rounded-2xl border dark:border-slate-800`}>
-                          <img src={item.img} className="w-16 h-16 object-cover rounded-xl" />
+                          <div className="relative w-16 h-16 overflow-hidden rounded-xl">
+                            <Image src={item.img} alt={item.nom} fill className="object-cover" />
+                          </div>
                           <div className="flex-1">
                             <h4 className="font-bold text-sm uppercase mb-1">{item.nom}</h4>
                             <p className="text-blue-600 font-black text-sm mb-2">{item.prix}$</p>
