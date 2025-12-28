@@ -23,34 +23,38 @@ export default function Navbar() {
   const router = useRouter();
   const { scrollY, scrollYProgress } = useScroll();
 
-  // --- FONCTION DE DÉCONNEXION AVEC REDIRECTION ---
-  const handleLogout = async () => {
-    try {
-      await logout(); // Supprime l'utilisateur du state et du localStorage
-      setIsMobileMenuOpen(false);
-      router.push('/'); // Redirige vers l'accueil
-      router.refresh(); // Force le rafraîchissement pour effacer les caches
-    } catch (error) {
-      console.error("Erreur déconnexion:", error);
-    }
-  };
-
-  // --- CONDITION D'AFFICHAGE UNIQUEMENT SUR L'ACCUEIL ---
-  if (pathname !== '/') {
-    return null;
-  }
-
+  // --- LOGIQUE DES HOOKS (DOIT ÊTRE AVANT LE RETURN NULL) ---
+  
   useMotionValueEvent(scrollY, "change", (latest) => {
+    // On n'exécute la logique de scroll que si on est sur l'accueil
+    if (pathname !== '/') return;
     if (latest > 20 && !isScrolled) setIsScrolled(true);
     if (latest <= 20 && isScrolled) setIsScrolled(false);
   });
 
   useEffect(() => {
     document.body.style.overflow = (isMobileMenuOpen || isAuthOpen) ? 'hidden' : 'unset';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isMobileMenuOpen, isAuthOpen]);
 
-  const displayNom = user ? (user.nom || user.name || user.username || "Client") : "";
-  const initial = displayNom ? displayNom[0].toUpperCase() : "?";
+  // --- CONDITION D'AFFICHAGE (APRÈS LES HOOKS) ---
+  if (pathname !== '/') {
+    return null;
+  }
+
+  // --- FONCTIONS HANDLERS ---
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMobileMenuOpen(false);
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      console.error("Erreur déconnexion:", error);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,6 +65,9 @@ export default function Navbar() {
       setIsSearchOpen(false);
     }
   };
+
+  const displayNom = user ? (user.nom || user.name || user.username || "Client") : "";
+  const initial = displayNom ? displayNom[0].toUpperCase() : "?";
 
   const navLinks = [
     { name: 'Nouveautés', href: '#nouveautés' },
@@ -103,7 +110,6 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Liens Desktop */}
             <div className="hidden lg:flex items-center gap-6">
               {navLinks.map((link) => (
                 <Link 
@@ -125,7 +131,6 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-3">
-              {/* Barre de recherche */}
               <form onSubmit={handleSearch} className="relative flex items-center">
                 <AnimatePresence>
                   {isSearchOpen && (
@@ -187,7 +192,6 @@ export default function Navbar() {
                 </>
               )}
 
-              {/* Panier */}
               <div className="relative">
                 <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                   <ShoppingCart size={18} />
@@ -202,7 +206,6 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Menu Burger Mobile */}
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="lg:hidden p-2 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-blue-600 hover:text-white transition-all"
@@ -213,7 +216,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Menu Mobile (AnimatePresence) */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
@@ -260,7 +262,6 @@ export default function Navbar() {
         </AnimatePresence>
       </nav>
 
-      {/* Modal Auth */}
       <AnimatePresence>
         {isAuthOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">

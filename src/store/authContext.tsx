@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// --- TYPE USER CORRIGÉ ---
-// On ajoute 'id' car il est indispensable pour vos requêtes SQL (dashboard.php?user_id=...)
+// --- TYPE USER ---
+// On centralise la structure pour éviter les répétitions
 type User = {
   id?: number | string; 
   name?: string;
@@ -14,7 +14,8 @@ type User = {
 
 interface AuthContextType {
   user: User;
-  login: (userData: any) => void; // 'any' ici permet d'accepter l'objet venant de votre API login.php
+  // Utilisation de 'User' au lieu de 'any' pour la fonction login
+  login: (userData: NonNullable<User>) => void; 
   logout: () => void;
   isLoading: boolean;
 }
@@ -27,22 +28,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Charger l'utilisateur au démarrage
   useEffect(() => {
-    // Utilisation de la clé 'user' pour être raccord avec votre Dashboard
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
-        const parsed = JSON.parse(savedUser);
+        const parsed = JSON.parse(savedUser) as User;
         setUser(parsed);
       } catch (error) {
+        // Optionnel : renommer 'error' en '_error' si ESLint râle sur la variable inutilisée
         console.error("Erreur de lecture du profil utilisateur", error);
-        localStorage.removeItem('user'); // Nettoyage si le JSON est corrompu
+        localStorage.removeItem('user');
       }
     }
     setIsLoading(false);
   }, []);
 
   // Fonction pour connecter l'utilisateur
-  const login = (userData: any) => {
+  const login = (userData: NonNullable<User>) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
   };
@@ -51,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    // Note: La redirection est gérée par la Navbar comme convenu
   };
 
   return (
