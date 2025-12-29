@@ -205,6 +205,18 @@ export default function DjephyGoldBusiness() {
     return () => clearInterval(iv);
   }, [countdownTarget]);
 
+  // Dev helpers: trigger a short 10s countdown and an immediate notification (for testing)
+  const triggerTestCountdown = () => {
+    setShowCountdownFinished(false);
+    setCountdownTarget(new Date(Date.now() + 10000));
+  };
+
+  const triggerNow = () => {
+    setShowCountdownFinished(true);
+    showBrowserNotification();
+    setTimeout(() => setShowCountdownFinished(false), 5000);
+  };
+
   const addToCart = (product: Produit) => {
     setCart(prev => {
       const exists = prev.find(item => item.id === product.id);
@@ -377,6 +389,10 @@ export default function DjephyGoldBusiness() {
                     <span className="text-[8px] font-bold uppercase mt-1">{v.label}</span>
                   </div>
                 ))}
+              </div>
+              <div className="relative z-10 flex items-center gap-2">
+                <button onClick={triggerTestCountdown} className="text-[10px] font-bold uppercase px-3 py-2 bg-white/20 rounded-md">Test +10s</button>
+                <button onClick={triggerNow} className="text-[10px] font-bold uppercase px-3 py-2 bg-white/20 rounded-md">Test notif</button>
               </div>
               <Zap size={150} className="absolute -right-10 -top-10 opacity-10 rotate-12" />
           </div>
