@@ -2,4 +2,22 @@
 @import "flowbite-react/plugin/tailwindcss";
 @source "../../.flowbite-react/class-list.json";
 
-/* Vous pouvez ajouter vos styles personnalisés ici */
+/* Variables CSS + support color-scheme pour respecter le mode sombre du téléphone */
+:root {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --text: #0f172a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #020617;
+    --surface: #071026;
+    --text: #e6eef8;
+  }
+}
+
+/* Exemples d'utilisation si besoin */
+/* body { background-color: var(--bg); color: var(--text); } */
+

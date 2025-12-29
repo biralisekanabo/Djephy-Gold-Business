@@ -13,6 +13,10 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Djephy Gold Business | Smartphones & Ordinateurs",
   description: "Vente d'accessoires téléphoniques, téléphones et ordinateurs premium.",
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' }
+  ]
 };
 
 export default function RootLayout({
@@ -22,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className="scroll-smooth">
-      <body className={`${inter.className} antialiased bg-[#020617] text-slate-100 min-h-screen flex flex-col selection:bg-blue-500/30`}>
+      <body className={`${inter.className} antialiased bg-white text-slate-900 dark:bg-[#020617] dark:text-slate-100 min-h-screen flex flex-col selection:bg-blue-500/30`}>
         
         {/* Arrière-plan stylisé fixe */}
         <div className="fixed inset-0 -z-10 h-full w-full bg-[#020617] overflow-hidden">
