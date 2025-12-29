@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar";
@@ -12,7 +12,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Djephy Gold Business | Smartphones & Ordinateurs",
-  description: "Vente d'accessoires téléphoniques, téléphones et ordinateurs premium.",
+  description: "Vente d'accessoires téléphoniques, téléphones et ordinateurs premium."
+};
+
+// Move theme-color meta to the `viewport` export as recommended by Next.js
+export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#020617' }

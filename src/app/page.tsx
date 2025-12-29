@@ -140,15 +140,24 @@ export default function DjephyGoldBusiness() {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsDarkMode((e as any).matches);
+
+    // Handler for modern browsers (receives MediaQueryListEvent)
+    const handleEvent = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+    // Legacy handler for older browsers that call the listener without an event
+    const legacyHandler = () => setIsDarkMode(mq.matches);
+
     setIsDarkMode(mq.matches);
-    // addEventListener for modern browsers, fallback to addListener
-    if ('addEventListener' in mq) mq.addEventListener('change', handler as any);
-    else (mq as any).addListener(handler);
-    return () => {
-      if ('removeEventListener' in mq) mq.removeEventListener('change', handler as any);
-      else (mq as any).removeListener(handler);
-    };
+
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', handleEvent);
+      return () => mq.removeEventListener('change', handleEvent);
+    }
+
+    // Fallback for older browsers using addListener/removeListener (no explicit `any` usage)
+    if ('addListener' in mq) {
+      (mq as unknown as { addListener: (listener: () => void) => void }).addListener(legacyHandler);
+      return () => (mq as unknown as { removeListener: (listener: () => void) => void }).removeListener(legacyHandler);
+    }
   }, []);
 
   const fetchLiveProducts = async () => {
@@ -239,7 +248,7 @@ export default function DjephyGoldBusiness() {
     const shipping = subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? 0 : (SHIPPING_COSTS[deliveryInfo.ville] || 0);
     const discountAmount = coupon ? (subtotalCartPrice * (coupon.percent / 100)) : 0;
     return Math.max(0, subtotalCartPrice - discountAmount + shipping);
-  }, [subtotalCartPrice, deliveryInfo.ville, coupon?.percent]);
+  }, [subtotalCartPrice, deliveryInfo.ville, coupon]);
 
   const filteredProducts = useMemo(() => {
     return ALL_PRODUCTS.filter(p => { 
