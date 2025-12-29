@@ -85,6 +85,13 @@ export default function DjephyGoldBusiness() {
   const [paymentMethod, setPaymentMethod] = useState<'whatsapp' | 'card'>('whatsapp');
   const [dbProducts, setDbProducts] = useState<Produit[]>([]);
 
+  // Countdown de fin de mois: calcule temps restant jusqu'au début du mois suivant
+  const getNextMonthStart = (now = new Date()) => new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+
+  const [countdownTarget, setCountdownTarget] = useState<Date>(() => getNextMonthStart());
+  const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00' });
+  const [showCountdownFinished, setShowCountdownFinished] = useState(false);
+
   // Simulation/Placeholder pour isDarkMode si non fourni par un contexte
   const isDarkMode = false; 
 
@@ -149,6 +156,54 @@ export default function DjephyGoldBusiness() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  // Calcul du temps restant jusqu'à la fin du mois et notification à la fin
+  const showBrowserNotification = async () => {
+    try {
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification('Offres Gold — Terminé', { body: "La période promotionnelle vient de se terminer.", icon: '/favicon.ico' });
+        } else if (Notification.permission !== 'denied') {
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') new Notification('Offres Gold — Terminé', { body: "La période promotionnelle vient de se terminer.", icon: '/favicon.ico' });
+        }
+      }
+    } catch (e) {
+      console.error("Notification error", e);
+    }
+  };
+
+  const computeTimeLeft = (target: Date) => {
+    const now = new Date();
+    const diff = target.getTime() - now.getTime();
+    if (diff <= 0) return { days: '00', hours: '00', minutes: '00', isFinished: true };
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / (3600 * 24));
+    const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return { days: String(days).padStart(2, '0'), hours: String(hours).padStart(2, '0'), minutes: String(minutes).padStart(2, '0'), isFinished: false };
+  };
+
+  useEffect(() => {
+    let firedThisRound = false;
+    const tick = () => {
+      const res = computeTimeLeft(countdownTarget);
+      setTimeLeft({ days: res.days, hours: res.hours, minutes: res.minutes });
+      if (res.isFinished && !firedThisRound) {
+        firedThisRound = true;
+        // Affiche notification in-app et navigateur
+        setShowCountdownFinished(true);
+        showBrowserNotification();
+        setTimeout(() => setShowCountdownFinished(false), 8000);
+        // Définit la nouvelle cible au prochain mois
+        setCountdownTarget(getNextMonthStart(new Date(Date.now() + 1000)));
+        setTimeout(() => { firedThisRound = false; }, 2000);
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [countdownTarget]);
 
   const addToCart = (product: Produit) => {
     setCart(prev => {
@@ -312,10 +367,14 @@ export default function DjephyGoldBusiness() {
                 <p className="opacity-80 text-sm font-medium">Profitez de la livraison gratuite dès 100$ d&apos;achat</p>
               </div>
               <div className="flex gap-4 relative z-10">
-                {['05', '12', '44'].map((v, i) => (
+                {[
+                  { val: timeLeft.days, label: 'Jours' },
+                  { val: timeLeft.hours, label: 'Hrs' },
+                  { val: timeLeft.minutes, label: 'Min' },
+                ].map((v, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <span className="bg-white/20 backdrop-blur-md w-12 h-12 flex items-center justify-center rounded-xl font-black text-lg">{v}</span>
-                    <span className="text-[8px] font-bold uppercase mt-1">{i===0?'Jours':i===1?'Hrs':'Min'}</span>
+                    <span className="bg-white/20 backdrop-blur-md w-12 h-12 flex items-center justify-center rounded-xl font-black text-lg">{v.val}</span>
+                    <span className="text-[8px] font-bold uppercase mt-1">{v.label}</span>
                   </div>
                 ))}
               </div>
@@ -467,6 +526,18 @@ export default function DjephyGoldBusiness() {
             <div>
               <p className="text-[10px] font-bold leading-tight">Vendu à l&apos;instant !</p>
               <p className="text-[9px] opacity-60 uppercase">{recentSale.name} expédié à {recentSale.city}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCountdownFinished && (
+          <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: -20, opacity: 1 }} exit={{ x: 100, opacity: 0 }} className="fixed bottom-24 left-0 z-[100] bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-2xl border dark:border-slate-700 flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-full text-white"><Zap size={16}/></div>
+            <div>
+              <p className="text-[10px] font-bold leading-tight">Offre terminée !</p>
+              <p className="text-[9px] opacity-60 uppercase">La période promotionnelle du mois est terminée.</p>
             </div>
           </motion.div>
         )}
