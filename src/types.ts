@@ -1,9 +1,9 @@
 export interface Produit {
-  id: number;
+  id: number | string;
   nom: string;
   prix: number;
   img: string; 
-  cat: "PC" | "Phone" | "Watch";
+  cat: "PC" | "Phone" | "Watch" | "Radio";
   stock: number;
   tag?: string;
   specs?: {

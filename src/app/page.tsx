@@ -8,6 +8,7 @@ import {
   CheckCircle2, Plus, Minus, Trash2, MessageCircle, Box, Search, Star,
   CreditCard, Smartphone, Monitor, Battery,   
 } from 'lucide-react';
+import { useCart } from '@/src/store/cartContext';
 
 // --- Types ---
 interface Produit {
@@ -74,7 +75,7 @@ export default function DjephyGoldBusiness() {
   const [index, setIndex] = useState(0);
   const [filter, setFilter] = useState<string>("Tous");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, addToCart, buyNow, updateQty, removeItem, clearCart, subtotal, totalItems } = useCart();
   const [compareList, setCompareList] = useState<Produit[]>([]);
   const [recentSale, setRecentSale] = useState<{name: string, city: string} | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -85,12 +86,54 @@ export default function DjephyGoldBusiness() {
   const [paymentMethod, setPaymentMethod] = useState<'whatsapp' | 'card'>('whatsapp');
   const [dbProducts, setDbProducts] = useState<Produit[]>([]);
 
-  // Countdown de fin de mois: calcule temps restant jusqu'au début du mois suivant
-  const getNextMonthStart = (now = new Date()) => new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+  // Coupon & saved-for-later
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{code: string, percent: number} | null>(() => {
+    try { const c = localStorage.getItem('djephy_coupon'); return c ? JSON.parse(c) : null; } catch { return null; }
+  });
+  const [savedForLater, setSavedForLater] = useState<CartItem[]>(() => {
+    try {
+      const s = localStorage.getItem('djephy_saved');
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  const [countdownTarget, setCountdownTarget] = useState<Date>(() => getNextMonthStart());
-  const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00' });
-  const [showCountdownFinished, setShowCountdownFinished] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem('djephy_saved', JSON.stringify(savedForLater)); } catch {}
+  }, [savedForLater]);
+
+  useEffect(() => {
+    try {
+      if (coupon) localStorage.setItem('djephy_coupon', JSON.stringify(coupon));
+      else localStorage.removeItem('djephy_coupon');
+    } catch {}
+  }, [coupon]);
+
+  const applyCoupon = () => {
+    if (couponCode.trim().toUpperCase() === 'GOLD10') {
+      setCoupon({ code: 'GOLD10', percent: 10 });
+      setCouponCode('');
+      alert('Coupon appliqué : 10% de réduction');
+    } else {
+      alert('Code invalide');
+    }
+  };
+
+  const saveItemForLater = (id: number | string) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    setSavedForLater(prev => [...prev, item]);
+    handleRemoveItem(id);
+  };
+
+  const moveToCartFromSaved = (id: number | string) => {
+    const item = savedForLater.find(i => i.id === id);
+    if (!item) return;
+    addToCart(item, item.quantity || 1);
+    setSavedForLater(prev => prev.filter(i => i.id !== id));
+  }; 
 
   // Simulation/Placeholder pour isDarkMode si non fourni par un contexte
   const isDarkMode = false; 
@@ -128,14 +171,7 @@ export default function DjephyGoldBusiness() {
     return [...dbProducts, ...PROD_DATA];
   }, [dbProducts]);
 
-  useEffect(() => {
-    const savedCart = localStorage.getItem('djephy_cart');
-    if (savedCart) setCart(JSON.parse(savedCart));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('djephy_cart', JSON.stringify(cart));
-  }, [cart]);
+  // Le stockage du panier est géré par `CartProvider` (localStorage centralisé).
 
   useEffect(() => {
     const sales = [
@@ -157,76 +193,12 @@ export default function DjephyGoldBusiness() {
     return () => clearInterval(timer);
   }, []);
 
-  // Calcul du temps restant jusqu'à la fin du mois et notification à la fin
-  const showBrowserNotification = async () => {
-    try {
-      if ('Notification' in window) {
-        if (Notification.permission === 'granted') {
-          new Notification('Offres Gold — Terminé', { body: "La période promotionnelle vient de se terminer.", icon: '/favicon.ico' });
-        } else if (Notification.permission !== 'denied') {
-          const perm = await Notification.requestPermission();
-          if (perm === 'granted') new Notification('Offres Gold — Terminé', { body: "La période promotionnelle vient de se terminer.", icon: '/favicon.ico' });
-        }
-      }
-    } catch (e) {
-      console.error("Notification error", e);
-    }
-  };
-
-  const computeTimeLeft = (target: Date) => {
-    const now = new Date();
-    const diff = target.getTime() - now.getTime();
-    if (diff <= 0) return { days: '00', hours: '00', minutes: '00', isFinished: true };
-    const totalSeconds = Math.floor(diff / 1000);
-    const days = Math.floor(totalSeconds / (3600 * 24));
-    const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return { days: String(days).padStart(2, '0'), hours: String(hours).padStart(2, '0'), minutes: String(minutes).padStart(2, '0'), isFinished: false };
-  };
-
-  useEffect(() => {
-    let firedThisRound = false;
-    const tick = () => {
-      const res = computeTimeLeft(countdownTarget);
-      setTimeLeft({ days: res.days, hours: res.hours, minutes: res.minutes });
-      if (res.isFinished && !firedThisRound) {
-        firedThisRound = true;
-        // Affiche notification in-app et navigateur
-        setShowCountdownFinished(true);
-        showBrowserNotification();
-        setTimeout(() => setShowCountdownFinished(false), 8000);
-        // Définit la nouvelle cible au prochain mois
-        setCountdownTarget(getNextMonthStart(new Date(Date.now() + 1000)));
-        setTimeout(() => { firedThisRound = false; }, 2000);
-      }
-    };
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
-  }, [countdownTarget]);
-
-  // Dev helpers: trigger a short 10s countdown and an immediate notification (for testing)
-  const triggerTestCountdown = () => {
-    setShowCountdownFinished(false);
-    setCountdownTarget(new Date(Date.now() + 10000));
-  };
-
-  const triggerNow = () => {
-    setShowCountdownFinished(true);
-    showBrowserNotification();
-    setTimeout(() => setShowCountdownFinished(false), 5000);
-  };
-
-  const addToCart = (product: Produit) => {
-    setCart(prev => {
-      const exists = prev.find(item => item.id === product.id);
-      if (exists) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { ...product, quantity: 1 }];
-    });
+  const handleAddToCart = (product: Produit) => {
+    addToCart(product, 1);
     setIsCartWiggling(true);
     setShowAddedTooltip(true);
     setTimeout(() => { setIsCartWiggling(false); setShowAddedTooltip(false); }, 1500);
-  };
+  }; 
 
   const toggleCompare = (product: Produit) => {
     setCompareList(prev => {
@@ -236,24 +208,25 @@ export default function DjephyGoldBusiness() {
     });
   };
 
-  const buyNow = (product: Produit) => {
-    setCart([{ ...product, quantity: 1 }]);
+  const handleBuyNow = (product: Produit) => {
+    buyNow(product);
     setIsCartOpen(true);
   }
 
-  const updateQty = (id: number | string, delta: number) => {
-    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+  const handleUpdateQty = (id: number | string, delta: number) => {
+    updateQty(id, delta);
   };
 
-  const removeItem = (id: number | string) => setCart(prev => prev.filter(item => item.id !== id));
+  const handleRemoveItem = (id: number | string) => removeItem(id);
   
-  const subtotalCartPrice = cart.reduce((acc, item) => acc + (item.prix * item.quantity), 0);
-  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const subtotalCartPrice = subtotal;
+  // totalItems comes from the Cart context (exported as `totalItems`)
 
   const totalCartPrice = useMemo(() => {
     const shipping = subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? 0 : (SHIPPING_COSTS[deliveryInfo.ville] || 0);
-    return subtotalCartPrice + shipping;
-  }, [subtotalCartPrice, deliveryInfo.ville]);
+    const discountAmount = coupon ? (subtotalCartPrice * (coupon.percent / 100)) : 0;
+    return Math.max(0, subtotalCartPrice - discountAmount + shipping);
+  }, [subtotalCartPrice, deliveryInfo.ville, coupon?.percent]);
 
   const filteredProducts = useMemo(() => {
     return ALL_PRODUCTS.filter(p => { 
@@ -326,8 +299,7 @@ export default function DjephyGoldBusiness() {
   const finalizeOrder = () => {
     setIsSuccess(false);
     setIsCartOpen(false);
-    setCart([]);
-    localStorage.removeItem('djephy_cart');
+    clearCart();
   }
 
   return (
@@ -349,7 +321,7 @@ export default function DjephyGoldBusiness() {
             </p>
           </motion.div>
 
-          <div className="relative h-[400px] bg-white dark:bg-slate-800 rounded-[3rem] overflow-hidden shadow-2xl border-[8px] border-white dark:border-slate-800">
+          <div className="relative h-64 md:h-[400px] bg-white dark:bg-slate-800 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-800">
             <AnimatePresence mode="wait">
               <motion.div
                 key={index}
@@ -379,20 +351,12 @@ export default function DjephyGoldBusiness() {
                 <p className="opacity-80 text-sm font-medium">Profitez de la livraison gratuite dès 100$ d&apos;achat</p>
               </div>
               <div className="flex gap-4 relative z-10">
-                {[
-                  { val: timeLeft.days, label: 'Jours' },
-                  { val: timeLeft.hours, label: 'Hrs' },
-                  { val: timeLeft.minutes, label: 'Min' },
-                ].map((v, i) => (
+                {['05', '12', '44'].map((v, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <span className="bg-white/20 backdrop-blur-md w-12 h-12 flex items-center justify-center rounded-xl font-black text-lg">{v.val}</span>
-                    <span className="text-[8px] font-bold uppercase mt-1">{v.label}</span>
+                    <span className="bg-white/20 backdrop-blur-md w-12 h-12 flex items-center justify-center rounded-xl font-black text-lg">{v}</span>
+                    <span className="text-[8px] font-bold uppercase mt-1">{i===0?'Jours':i===1?'Hrs':'Min'}</span>
                   </div>
                 ))}
-              </div>
-              <div className="relative z-10 flex items-center gap-2">
-                <button onClick={triggerTestCountdown} className="text-[10px] font-bold uppercase px-3 py-2 bg-white/20 rounded-md">Test +10s</button>
-                <button onClick={triggerNow} className="text-[10px] font-bold uppercase px-3 py-2 bg-white/20 rounded-md">Test notif</button>
               </div>
               <Zap size={150} className="absolute -right-10 -top-10 opacity-10 rotate-12" />
           </div>
@@ -430,7 +394,7 @@ export default function DjephyGoldBusiness() {
                   <motion.div 
                     layout key={prod.id} 
                     initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} 
-                    className={`group relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-100'} border rounded-[2rem] p-4 hover:shadow-2xl transition-all duration-300`}
+                    className={`group relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-100'} border rounded-[1.5rem] sm:rounded-[2rem] p-3 sm:p-4 hover:shadow-2xl transition-all duration-300`}
                   >
                     <div className="absolute top-6 left-6 z-10 flex flex-col gap-2">
                        {prod.stock <= 0 ? (
@@ -480,16 +444,18 @@ export default function DjephyGoldBusiness() {
 
                     <div className="flex gap-2">
                       <button 
+                        aria-label={`Ajouter ${prod.nom} au panier`}
                         disabled={prod.stock <= 0}
-                        onClick={() => addToCart(prod)} 
-                        className={`flex-1 ${prod.stock <= 0 ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all`}
+                        onClick={() => handleAddToCart(prod)} 
+                        className={`flex-1 ${prod.stock <= 0 ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 sm:py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all`}
                       >
                         <Plus size={14} /> Panier
                       </button>
                       <button 
+                        aria-label={`Acheter ${prod.nom} maintenant`}
                         disabled={prod.stock <= 0}
-                        onClick={() => buyNow(prod)} 
-                        className={`p-3 rounded-xl border ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50'} ${prod.stock <= 0 ? 'opacity-50' : ''}`}
+                        onClick={() => handleBuyNow(prod)} 
+                        className={`p-3 rounded-xl border ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50'} ${prod.stock <= 0 ? 'opacity-50' : ''} focus:outline-none focus:ring-2 focus:ring-blue-400`}
                       >
                          <Zap size={14} />
                       </button>
@@ -547,18 +513,6 @@ export default function DjephyGoldBusiness() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showCountdownFinished && (
-          <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: -20, opacity: 1 }} exit={{ x: 100, opacity: 0 }} className="fixed bottom-24 left-0 z-[100] bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-2xl border dark:border-slate-700 flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-full text-white"><Zap size={16}/></div>
-            <div>
-              <p className="text-[10px] font-bold leading-tight">Offre terminée !</p>
-              <p className="text-[9px] opacity-60 uppercase">La période promotionnelle du mois est terminée.</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* PANIER MODAL */}
       <AnimatePresence>
         {isCartOpen && (
@@ -566,13 +520,18 @@ export default function DjephyGoldBusiness() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCartOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div 
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: 'spring', damping: 25 }}
-              className={`relative w-full max-w-md h-screen ${isDarkMode ? 'bg-slate-900 border-l border-slate-800' : 'bg-white'} shadow-2xl flex flex-col`}
+              role="dialog" aria-modal="true" aria-label="Panier" className={`relative w-full max-w-md h-screen ${isDarkMode ? 'bg-slate-900 border-l border-slate-800' : 'bg-white'} shadow-2xl flex flex-col`}
             >
               <div className="px-6 py-6 border-b dark:border-slate-800 flex justify-between items-center">
                 <span className="text-lg font-black flex items-center gap-2 uppercase italic tracking-tighter">
                   <ShoppingBag size={20} className="text-blue-600" /> Mon Panier <span className="text-blue-600">({totalItems})</span>
                 </span>
-                <button onClick={() => setIsCartOpen(false)} className="p-2 hover:rotate-90 transition-transform"><X /></button>
+                <div className="flex items-center gap-3">
+                  {cart.length > 0 && (
+                    <button aria-label="Vider le panier" onClick={() => { if (confirm('Vider le panier ?')) clearCart(); }} className="text-[10px] font-bold text-red-500 uppercase focus:outline-none focus:ring-2 focus:ring-red-400">Vider</button>
+                  )}
+                  <button aria-label="Fermer le panier" onClick={() => setIsCartOpen(false)} className="p-2 hover:rotate-90 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-400"><X /></button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -594,17 +553,38 @@ export default function DjephyGoldBusiness() {
                             <p className="text-blue-600 font-black text-sm mb-2">{item.prix}$</p>
                             <div className="flex items-center gap-3">
                               <div className="flex items-center bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg overflow-hidden">
-                                <button onClick={() => updateQty(item.id, -1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Minus size={12}/></button>
+                                <button onClick={() => handleUpdateQty(item.id, -1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Minus size={12}/></button>
                                 <span className="px-2 text-xs font-bold">{item.quantity}</span>
-                                <button onClick={() => updateQty(item.id, 1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus size={12}/></button>
+                                <button onClick={() => handleUpdateQty(item.id, 1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus size={12}/></button>
                               </div>
-                              <button onClick={() => removeItem(item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                              <button onClick={() => saveItemForLater(item.id)} className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors mr-2 text-[11px] font-bold">Sauver</button>
+                              <button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><Trash2 size={14}/></button>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    
+
+                    {savedForLater.length > 0 && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-700">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Articles sauvegardés</p>
+                        <div className="space-y-3">
+                          {savedForLater.map(s => (
+                            <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="relative w-10 h-10 overflow-hidden rounded-lg"><Image src={s.img} alt="" fill className="object-cover"/></div>
+                                <div className="text-sm font-bold uppercase">{s.nom}</div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button onClick={() => moveToCartFromSaved(s.id)} className="text-green-600 font-bold text-[13px]">Remettre</button>
+                                <button onClick={() => setSavedForLater(prev => prev.filter(i => i.id !== s.id))} className="text-red-500 font-bold text-[13px]">Suppr.</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
                       <div className="flex justify-between text-[10px] font-black uppercase mb-2 text-blue-700 dark:text-blue-400">
                         <span>{subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? "Livraison offerte !" : `Encore ${FREE_SHIPPING_THRESHOLD - subtotalCartPrice}$ pour la livraison gratuite`}</span>
@@ -625,6 +605,13 @@ export default function DjephyGoldBusiness() {
                     </div>
 
                     <div className="space-y-3 pt-4 border-t dark:border-slate-800">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Code promo</p>
+                      <div className="flex gap-3">
+                        <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="CODE (ex: GOLD10)" className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm outline-none" />
+                        <button onClick={applyCoupon} className="px-4 py-3 bg-blue-600 text-white rounded-xl font-bold">Appliquer</button>
+                      </div>
+                      {coupon && <p className="text-[11px] font-bold text-green-600">{coupon.code} appliqué ({coupon.percent}% )</p>}
+
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Moyen de paiement</p>
                       <div className="grid grid-cols-2 gap-3">
                         <button 
@@ -649,6 +636,14 @@ export default function DjephyGoldBusiness() {
 
               {cart.length > 0 && (
                 <div className={`p-6 border-t ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white'}`}>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm font-bold"><span>Sous-total</span><span>{subtotalCartPrice.toLocaleString()}$</span></div>
+                    {coupon && (
+                      <div className="flex justify-between text-sm font-bold text-green-600"><span>Remise ({coupon.code})</span><span>-{(subtotalCartPrice * (coupon.percent/100)).toFixed(2)}$</span></div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold"><span>Livraison</span><span>{subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? 'Gratuite' : (SHIPPING_COSTS[deliveryInfo.ville] || 0) + '$'}</span></div>
+                  </div>
+
                   <div className="flex justify-between items-end mb-6">
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total à payer</p>
@@ -675,17 +670,17 @@ export default function DjephyGoldBusiness() {
 
       {/* BOUTON FLOTTANT PANIER */}
       {!isCartOpen && cart.length > 0 && (
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center">
           <AnimatePresence>
             {showAddedTooltip && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -5 }} exit={{ opacity: 0 }} className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full mb-2 shadow-xl uppercase tracking-widest">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -5 }} exit={{ opacity: 0 }} className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full mb-2 shadow-xl uppercase tracking-widest">
                 Ajouté !
               </motion.div>
             )}
           </AnimatePresence>
-          <button onClick={() => setIsCartOpen(true)} className={`p-5 rounded-full bg-blue-600 text-white shadow-2xl relative transition-all active:scale-90 ${isCartWiggling ? 'animate-wiggle' : 'hover:scale-110'}`}>
-            <ShoppingCart size={24} />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white">{totalItems}</span>
+          <button onClick={() => setIsCartOpen(true)} className={`p-4 sm:p-5 rounded-full bg-blue-600 text-white shadow-2xl relative transition-all active:scale-90 ${isCartWiggling ? 'animate-wiggle' : 'hover:scale-110'}`}>
+            <ShoppingCart size={20} />
+            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold border-2 border-white">{totalItems}</span>
           </button>
         </div>
       )}

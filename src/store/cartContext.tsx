@@ -7,8 +7,8 @@ interface CartContextType {
   cart: CartItemType[];
   addToCart: (product: Produit, quantity?: number) => void;
   buyNow: (product: Produit) => void;
-  updateQty: (id: number, delta: number) => void;
-  removeItem: (id: number) => void;
+  updateQty: (id: number | string, delta: number) => void;
+  removeItem: (id: number | string) => void;
   clearCart: () => void;
   subtotal: number;
   totalItems: number;
@@ -56,12 +56,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const buyNow = (product: Produit) => setCart([{ ...product, quantity: 1 }]);
 
-  const updateQty = (id: number, delta: number) => 
+  const updateQty = (id: number | string, delta: number) => 
     setCart(prev => prev.map(item => 
       item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
     ));
 
-  const removeItem = (id: number) => 
+  const removeItem = (id: number | string) => 
     setCart(prev => prev.filter(item => item.id !== id));
 
   const clearCart = () => setCart([]);
