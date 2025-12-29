@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import { User, Search, Menu, X, Zap, ShoppingCart, LogOut, LayoutDashboard, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,6 +17,30 @@ export default function Navbar() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+
+  // --- ORDERS TYPES & STATE ---
+  interface OrderItem {
+    nom_produit: string;
+    quantite: number;
+    prix_unitaire: string | number;
+  }
+
+  interface Order {
+    id: number;
+    date_commande: string;
+    statut: string;
+    prix_total: string | number;
+    items?: OrderItem[];
+  }
+
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+
+  // last seen order id to detect new orders
+  const lastOrderIdRef = useRef<number | null>(null);
+  // toast for new order notification
+  const [toast, setToast] = useState<{ msg: string; id: number } | null>(null);
   
   const { user, logout, isLoading } = useAuth(); 
   const { totalItems } = useCart();
@@ -38,6 +62,57 @@ export default function Navbar() {
       document.body.style.overflow = 'unset';
     };
   }, [isMobileMenuOpen, isAuthOpen]);
+
+  // --- FETCH USER ORDERS (COUNT + RECENT) ---
+  useEffect(() => {
+    let mounted = true;
+    const loadOrders = async () => {
+      try {
+        const storedUser = localStorage.getItem('user') || localStorage.getItem('djephy_user');
+        if (!storedUser) return;
+        const user = JSON.parse(storedUser);
+        const userId = user.id_utilisateur || user.id || user.user?.id_utilisateur || user.user?.id;
+        if (!userId) return;
+
+        setOrdersLoading(true);
+        const response = await fetch(`https://blessing.alwaysdata.net/api/passer_commande.php?id_utilisateur=${userId}`, {
+          method: 'GET', headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Erreur serveur');
+        const res = await response.json();
+        if (mounted && res?.success && Array.isArray(res.orders)) {
+          // store orders and keep only latest
+          const sorted = res.orders.slice().sort((a: Order, b: Order) => Number(b.id) - Number(a.id));
+          // detect new orders compared to last seen id
+          const latestId = sorted.length > 0 ? Number(sorted[0].id) : null;
+          if (lastOrderIdRef.current == null) {
+            // initial load: set last seen id without notifying
+            lastOrderIdRef.current = latestId;
+          } else if (latestId && lastOrderIdRef.current && latestId > lastOrderIdRef.current) {
+            // new order detected
+            setToast({ msg: `#CMD-${latestId}`, id: latestId });
+            lastOrderIdRef.current = latestId;
+          }
+          setOrders(sorted);
+        }
+      } catch (e) {
+        console.warn('Impossible de charger les commandes:', e);
+      } finally {
+        if (mounted) setOrdersLoading(false);
+      }
+    };
+
+    loadOrders();
+    const interval = setInterval(loadOrders, 60_000); // refresh every minute
+    return () => { mounted = false; clearInterval(interval); };
+  }, [user]);
+
+  // auto-dismiss toast after a timeout
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 8000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // --- CONDITION D'AFFICHAGE (APRÈS LES HOOKS) ---
   if (pathname !== '/') {
@@ -80,6 +155,28 @@ export default function Navbar() {
 
   return (
     <>
+      {/* New order toast notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="fixed top-6 right-6 z-[400]">
+            <div className="relative">
+              <motion.button
+                onClick={() => { router.push('/mon-espace#orders'); setToast(null); }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-3 bg-green-600 text-white px-4 py-3 rounded-xl shadow-xl hover:shadow-2xl focus:outline-none"
+              >
+                <ShoppingCart size={18} />
+                <div className="text-left">
+                  <p className="text-sm font-black leading-none">Nouvelle commande</p>
+                  <p className="text-xs opacity-90">{toast.msg}</p>
+                </div>
+              </motion.button>
+              <button onClick={() => setToast(null)} aria-label="Fermer" className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow text-slate-700">✕</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav role="navigation" aria-label="Main navigation" className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
         isScrolled ? 'py-2' : 'py-6'
       }`}>
@@ -173,10 +270,72 @@ export default function Navbar() {
                       )}
 
                       {/* Bouton Mes commandes pour utilisateurs connectés */}
-                      <Link href="/mon-espace#orders" className="hidden sm:inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-800 hover:bg-green-100 transition-colors ml-2">
-                        <ShoppingCart size={14} />
-                        <span className="text-[9px] font-black uppercase">Mes commandes</span>
-                      </Link>
+                      {/* Desktop: pill with badge + hover to preview */}
+                      <div className="hidden sm:inline-flex relative ml-2">
+                        <Link href="/mon-espace#orders" onMouseEnter={() => setOrdersOpen(true)} onMouseLeave={() => setOrdersOpen(false)} className="relative inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-800 hover:bg-green-100 transition-colors">
+                          <ShoppingCart size={14} />
+                          <span className="text-[9px] font-black uppercase">Mes commandes</span>
+                          {ordersLoading ? (
+                            <span className="absolute -top-2 -right-2 bg-white rounded-full p-0.5">
+                              <Loader2 size={12} className="animate-spin text-green-600" />
+                            </span>
+                          ) : orders.length > 0 ? (
+                            <span className="absolute -top-2 -right-2 bg-green-600 text-white text-[9px] font-black rounded-full h-5 w-5 flex items-center justify-center ring-2 ring-white dark:ring-slate-900">{orders.length}</span>
+                          ) : null}
+                        </Link>
+
+                        {/* Desktop preview panel */}
+                        <AnimatePresence>
+                          {ordersOpen && orders.length > 0 && (
+                            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="absolute top-full right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-3 z-50">
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dernières commandes</p>
+                              <div className="space-y-2">
+                                {orders.slice(0,3).map((o) => (
+                                  <div key={o.id} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
+                                    <div>
+                                      <p className="text-[11px] font-black">#CMD-{o.id} <span className="text-[10px] font-medium text-slate-500">{new Date(o.date_commande).toLocaleDateString()}</span></p>
+                                      <p className="text-[10px] text-slate-600 dark:text-slate-300">{o.statut} — {parseFloat(String(o.prix_total || 0)).toFixed(2)} $</p>
+                                    </div>
+                                    <Link href="/mon-espace#orders" onClick={() => setOrdersOpen(false)} className="text-green-600 text-[12px] font-black ml-2">Voir</Link>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Mobile: visible icon with badge + expandable preview */}
+                      <div className="relative sm:hidden">
+                        <button aria-label="Mes commandes" onClick={() => setOrdersOpen(!ordersOpen)} className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors">
+                          <ShoppingCart size={18} />
+                        </button>
+                        {ordersLoading ? (
+                          <span className="absolute -top-1 -right-1 bg-white rounded-full p-0.5"><Loader2 size={12} className="animate-spin text-green-600" /></span>
+                        ) : orders.length > 0 ? (
+                          <span className="absolute -top-1 -right-1 bg-green-600 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center">{orders.length}</span>
+                        ) : null}
+
+                        <AnimatePresence>
+                          {ordersOpen && orders.length > 0 && (
+                            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute top-full right-0 mt-3 w-72 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-3 z-50">
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dernières commandes</p>
+                              <div className="space-y-2">
+                                {orders.slice(0,3).map((o) => (
+                                  <div key={o.id} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
+                                    <div>
+                                      <p className="text-[11px] font-black">#CMD-{o.id} <span className="text-[10px] font-medium text-slate-500">{new Date(o.date_commande).toLocaleDateString()}</span></p>
+                                      <p className="text-[10px] text-slate-600 dark:text-slate-300">{o.statut} — {parseFloat(String(o.prix_total || 0)).toFixed(2)} $</p>
+                                    </div>
+                                    <Link href="/mon-espace#orders" onClick={() => setOrdersOpen(false)} className="text-green-600 text-[12px] font-black ml-2">Voir</Link>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
                       <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div className="w-6 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white uppercase">
                           {initial}
