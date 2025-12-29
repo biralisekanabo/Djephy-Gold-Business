@@ -127,7 +127,7 @@ export default function DashboardPage() {
           throw new Error("Identifiant utilisateur introuvable.");
         }
 
-        const response = await fetch(`http://127.0.0.1/api/passer_commande.php?id_utilisateur=${userId}`, {
+        const response = await fetch(`https://blessing.alwaysdata.net/api/passer_commande.php?id_utilisateur=${userId}`, {
           method: 'GET',
           headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' }
         });
