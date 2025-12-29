@@ -70,7 +70,7 @@ export default function Navbar() {
   const initial = displayNom ? displayNom[0].toUpperCase() : "?";
 
   const navLinks = [
-    { name: 'Nouveautés', href: '#nouveautés' },
+    { name: 'Nouveautés', href: '#nouveautes' },
     { name: 'iPhone', href: '#iphone' },
     { name: 'MacBook', href: '#macbook' },
     { name: 'Accessoires', href: '#accessoires' },
@@ -80,7 +80,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+      <nav role="navigation" aria-label="Main navigation" className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
         isScrolled ? 'py-2' : 'py-6'
       }`}>
         <motion.div 
@@ -95,7 +95,7 @@ export default function Navbar() {
             : 'bg-transparent'
           }`}>
             
-            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+            <Link href="/" className="flex items-center gap-2 group shrink-0">
               <motion.div 
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200"
@@ -160,13 +160,20 @@ export default function Navbar() {
                 <>
                   {user ? (
                     <div className="flex items-center gap-2">
-                      <Link href="/admin" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors">
-                        <LayoutDashboard size={14} />
-                        <span className="text-[9px] font-black uppercase">Dashboard</span>
-                      </Link>
+                      {user?.role === 'admin' ? (
+                        <Link href="/admin" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors" aria-label="Admin dashboard">
+                          <LayoutDashboard size={14} />
+                          <span className="text-[9px] font-black uppercase">Admin</span>
+                        </Link>
+                      ) : (
+                        <Link href="/dashboard" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors" aria-label="Mon dashboard">
+                          <LayoutDashboard size={14} />
+                          <span className="text-[9px] font-black uppercase">Dashboard</span>
+                        </Link>
+                      )}
 
                       {/* Bouton Mes commandes pour utilisateurs connectés */}
-                      <Link href="/mon-espace" className="hidden sm:inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-800 hover:bg-green-100 transition-colors ml-2">
+                      <Link href="/mon-espace#orders" className="hidden sm:inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-800 hover:bg-green-100 transition-colors ml-2">
                         <ShoppingCart size={14} />
                         <span className="text-[9px] font-black uppercase">Mes commandes</span>
                       </Link>
@@ -174,7 +181,7 @@ export default function Navbar() {
                         <div className="w-6 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white uppercase">
                           {initial}
                         </div>
-                        <span className="hidden xs:inline text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        <span className="hidden sm:inline text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
                           {displayNom}
                         </span>
                       </div>
@@ -199,7 +206,7 @@ export default function Navbar() {
               )}
 
               <div className="relative">
-                <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <button aria-label="Voir le panier" className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                   <ShoppingCart size={18} />
                 </button>
                 {totalItems > 0 && (
@@ -239,10 +246,16 @@ export default function Navbar() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
-                          <LayoutDashboard size={20} />
-                        </Link>
-                        <Link href="/mon-espace#orders" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
+                        {user?.role === 'admin' ? (
+                          <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} aria-label="Admin dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                            <LayoutDashboard size={20} />
+                          </Link>
+                        ) : (
+                          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mon dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                            <LayoutDashboard size={20} />
+                          </Link>
+                        )}
+                        <Link href="/mon-espace#orders" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mes commandes" className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
                           <ShoppingCart size={18} />
                         </Link>
                       </div>

@@ -10,6 +10,7 @@ type User = {
   nom?: string;
   username?: string;
   email?: string;
+  role?: 'admin' | 'user' | string;
 } | null;
 
 interface AuthContextType {
