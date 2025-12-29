@@ -63,6 +63,15 @@ export default function Navbar() {
     };
   }, [isMobileMenuOpen, isAuthOpen]);
 
+  // Close mobile menu with Escape key; also close on route change
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsMobileMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
+
   // --- FETCH USER ORDERS (COUNT + RECENT) ---
   useEffect(() => {
     let mounted = true;
@@ -186,7 +195,7 @@ export default function Navbar() {
         />
 
         <div className="container mx-auto px-4 md:px-6">
-          <div className={`relative flex items-center justify-between px-4 py-2 rounded-full transition-all duration-500 ${
+          <div className={`relative flex items-center justify-between px-4 py-2 rounded-none sm:rounded-full transition-all duration-500 ${
             isScrolled || !isHome
             ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl border border-white/20' 
             : 'bg-transparent'
@@ -379,8 +388,11 @@ export default function Navbar() {
               </div>
 
               <button 
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-menu"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="lg:hidden p-2 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-blue-600 hover:text-white transition-all"
+                aria-label="Ouvrir le menu mobile"
               >
                 {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -391,10 +403,12 @@ export default function Navbar() {
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="absolute top-full left-0 right-0 px-6 mt-4 lg:hidden"
+              id="mobile-menu"
+              role="menu"
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+              className="absolute top-full left-0 right-0 px-4 mt-2 lg:hidden"
             >
-              <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+              <div className="bg-white/98 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
                 {user && (
                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
                       <div className="flex items-center gap-3">
@@ -406,15 +420,15 @@ export default function Navbar() {
                       </div>
                       <div className="flex items-center gap-2">
                         {user?.role === 'admin' ? (
-                          <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} aria-label="Admin dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                                  <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} aria-label="Admin dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600 w-full flex items-center justify-center">
                             <LayoutDashboard size={20} />
                           </Link>
                         ) : (
-                          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mon dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                          <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mon dashboard" className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600 w-full flex items-center justify-center">
                             <LayoutDashboard size={20} />
                           </Link>
                         )}
-                        <Link href="/mon-espace#orders" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mes commandes" className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
+                        <Link href="/mon-espace#orders" onClick={() => setIsMobileMenuOpen(false)} aria-label="Mes commandes" className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 w-full flex items-center justify-center">
                           <ShoppingCart size={18} />
                         </Link>
                       </div>
