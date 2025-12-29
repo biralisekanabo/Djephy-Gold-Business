@@ -274,7 +274,7 @@ export default function DashboardPage() {
           </aside>
 
           <div className="lg:col-span-8">
-            <div className="flex items-center justify-between mb-8">
+<div className="flex items-center justify-between mb-8" id="orders">
                 <h3 className="text-xl font-black uppercase tracking-tighter italic">Historique</h3>
                 <span className="bg-zinc-900 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase">
                     {filteredOrders.length} {filteredOrders.length > 1 ? 'Commandes' : 'Commande'}

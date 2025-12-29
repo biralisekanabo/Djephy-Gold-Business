@@ -160,9 +160,15 @@ export default function Navbar() {
                 <>
                   {user ? (
                     <div className="flex items-center gap-2">
-                      <Link href="/dashboard" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors">
+                      <Link href="/admin" className="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 hover:bg-blue-100 transition-colors">
                         <LayoutDashboard size={14} />
                         <span className="text-[9px] font-black uppercase">Dashboard</span>
+                      </Link>
+
+                      {/* Bouton Mes commandes pour utilisateurs connectés */}
+                      <Link href="/mon-espace" className="hidden sm:inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 px-3 py-1.5 rounded-full border border-green-100 dark:border-green-800 hover:bg-green-100 transition-colors ml-2">
+                        <ShoppingCart size={14} />
+                        <span className="text-[9px] font-black uppercase">Mes commandes</span>
                       </Link>
                       <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                         <div className="w-6 h-6 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white uppercase">
@@ -232,9 +238,14 @@ export default function Navbar() {
                           <p className="text-sm font-black text-slate-900 dark:text-white">{displayNom}</p>
                         </div>
                       </div>
-                      <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
-                        <LayoutDashboard size={20} />
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-white dark:bg-slate-800 rounded-xl text-blue-600">
+                          <LayoutDashboard size={20} />
+                        </Link>
+                        <Link href="/mon-espace#orders" onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
+                          <ShoppingCart size={18} />
+                        </Link>
+                      </div>
                    </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
