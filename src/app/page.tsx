@@ -8,7 +8,6 @@ import {
   CheckCircle2, Plus, Minus, Trash2, MessageCircle, Box, Search, Star,
   CreditCard, Smartphone, Monitor, Battery,   
 } from 'lucide-react';
-import { useCart } from '@/src/store/cartContext';
 
 // --- Types ---
 interface Produit {
@@ -75,7 +74,7 @@ export default function DjephyGoldBusiness() {
   const [index, setIndex] = useState(0);
   const [filter, setFilter] = useState<string>("Tous");
   const [searchQuery, setSearchQuery] = useState("");
-  const { cart, addToCart, buyNow, updateQty, removeItem, clearCart, subtotal, totalItems } = useCart();
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [compareList, setCompareList] = useState<Produit[]>([]);
   const [recentSale, setRecentSale] = useState<{name: string, city: string} | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -122,7 +121,14 @@ export default function DjephyGoldBusiness() {
     return [...dbProducts, ...PROD_DATA];
   }, [dbProducts]);
 
-  // Le stockage du panier est géré par `CartProvider` (localStorage centralisé).
+  useEffect(() => {
+    const savedCart = localStorage.getItem('djephy_cart');
+    if (savedCart) setCart(JSON.parse(savedCart));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('djephy_cart', JSON.stringify(cart));
+  }, [cart]);
 
   useEffect(() => {
     const sales = [
@@ -144,12 +150,16 @@ export default function DjephyGoldBusiness() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAddToCart = (product: Produit) => {
-    addToCart(product, 1);
+  const addToCart = (product: Produit) => {
+    setCart(prev => {
+      const exists = prev.find(item => item.id === product.id);
+      if (exists) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { ...product, quantity: 1 }];
+    });
     setIsCartWiggling(true);
     setShowAddedTooltip(true);
     setTimeout(() => { setIsCartWiggling(false); setShowAddedTooltip(false); }, 1500);
-  }; 
+  };
 
   const toggleCompare = (product: Produit) => {
     setCompareList(prev => {
@@ -159,19 +169,19 @@ export default function DjephyGoldBusiness() {
     });
   };
 
-  const handleBuyNow = (product: Produit) => {
-    buyNow(product);
+  const buyNow = (product: Produit) => {
+    setCart([{ ...product, quantity: 1 }]);
     setIsCartOpen(true);
   }
 
-  const handleUpdateQty = (id: number | string, delta: number) => {
-    updateQty(id, delta);
+  const updateQty = (id: number | string, delta: number) => {
+    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
   };
 
-  const handleRemoveItem = (id: number | string) => removeItem(id);
+  const removeItem = (id: number | string) => setCart(prev => prev.filter(item => item.id !== id));
   
-  const subtotalCartPrice = subtotal;
-  // totalItems comes from the Cart context (exported as `totalItems`)
+  const subtotalCartPrice = cart.reduce((acc, item) => acc + (item.prix * item.quantity), 0);
+  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   const totalCartPrice = useMemo(() => {
     const shipping = subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? 0 : (SHIPPING_COSTS[deliveryInfo.ville] || 0);
@@ -198,7 +208,7 @@ export default function DjephyGoldBusiness() {
         prix_unitaire: item.prix
       }));
 
-      const response = await fetch('https://blessing.alwaysdata.net/api/passer_commande.php', { 
+      const response = await fetch('https:blessing.alwaysdata.net/api/passer_commande.php', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -249,7 +259,8 @@ export default function DjephyGoldBusiness() {
   const finalizeOrder = () => {
     setIsSuccess(false);
     setIsCartOpen(false);
-    clearCart();
+    setCart([]);
+    localStorage.removeItem('djephy_cart');
   }
 
   return (
@@ -395,14 +406,14 @@ export default function DjephyGoldBusiness() {
                     <div className="flex gap-2">
                       <button 
                         disabled={prod.stock <= 0}
-                        onClick={() => handleAddToCart(prod)} 
+                        onClick={() => addToCart(prod)} 
                         className={`flex-1 ${prod.stock <= 0 ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all`}
                       >
                         <Plus size={14} /> Panier
                       </button>
                       <button 
                         disabled={prod.stock <= 0}
-                        onClick={() => handleBuyNow(prod)} 
+                        onClick={() => buyNow(prod)} 
                         className={`p-3 rounded-xl border ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50'} ${prod.stock <= 0 ? 'opacity-50' : ''}`}
                       >
                          <Zap size={14} />
@@ -496,11 +507,11 @@ export default function DjephyGoldBusiness() {
                             <p className="text-blue-600 font-black text-sm mb-2">{item.prix}$</p>
                             <div className="flex items-center gap-3">
                               <div className="flex items-center bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg overflow-hidden">
-                                <button onClick={() => handleUpdateQty(item.id, -1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Minus size={12}/></button>
+                                <button onClick={() => updateQty(item.id, -1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Minus size={12}/></button>
                                 <span className="px-2 text-xs font-bold">{item.quantity}</span>
-                                <button onClick={() => handleUpdateQty(item.id, 1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus size={12}/></button>
+                                <button onClick={() => updateQty(item.id, 1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"><Plus size={12}/></button>
                               </div>
-                              <button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><Trash2 size={14}/></button>
+                              <button onClick={() => removeItem(item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><Trash2 size={14}/></button>
                             </div>
                           </div>
                         </div>

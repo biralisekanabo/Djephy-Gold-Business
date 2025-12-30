@@ -3,3 +3,6 @@
 @source "../../.flowbite-react/class-list.json";
 
 /* Vous pouvez ajouter vos styles personnalisés ici */
+@layer components {
+  /* Styles personnalisés pour les composants Flowbite React */
+}
