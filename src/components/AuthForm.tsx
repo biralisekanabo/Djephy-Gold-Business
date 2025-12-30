@@ -356,7 +356,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
               layout
               whileHover={{ y: -2 }}
               onClick={handleGithubLogin}
-              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-white shadow-sm transition-all hover:bg-black"
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-white shadow-sm transition-all"
             >
               <Github size={16} />
               <span className="text-[11px] font-bold">GitHub</span>
