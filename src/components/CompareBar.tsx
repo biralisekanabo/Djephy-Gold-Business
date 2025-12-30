@@ -20,7 +20,7 @@ export default function CompareBar({ compareList, isDarkMode, onClose }: Props) 
           exit={{ y: 100 }} 
           className="fixed bottom-0 left-0 right-0 z-[70] p-4 flex justify-center"
         >
-          <div className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border shadow-2xl rounded-t-[2.5rem] w-full max-w-4xl p-6`}>
+          <div className={`${isDarkMode ? 'bg-blue-800 border-blue-700' : 'bg-white border-blue-100'} border shadow-2xl rounded-t-[2.5rem] w-full max-w-4xl p-6`}>
             <div className="flex justify-between items-center mb-6">
               <h4 className="text-xs font-black uppercase italic tracking-widest">Comparateur Gold ({compareList.length}/2)</h4>
               <button 

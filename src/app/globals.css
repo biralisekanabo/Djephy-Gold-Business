@@ -5,18 +5,38 @@
 /* Variables CSS + support color-scheme pour respecter le mode sombre du téléphone */
 :root {
   color-scheme: light;
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --text: #0f172a;
+  /* Utilisation exclusive : blanc et bleu */
+  --bg: #ffffff; /* blanc */
+  --surface: #ffffff; /* blanc */
+  --text: #1e3a8a; /* blue-800 */
+  --accent: #2563eb; /* blue-600 */
 }
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #020617;
-    --surface: #071026;
-    --text: #e6eef8;
+    --bg: #0b1220; /* approximated dark blue (blue-900-like) */
+    --surface: #07204a; /* dark blue surface */
+    --text: #ffffff; /* blanc */
+    --accent: #3b82f6; /* blue-500 */
   }
 }
+
+/* Appliquer les couleurs globalement */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Forcer les éléments interactifs à blue / white */
+a, button, .btn {
+  color: var(--accent);
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--text);
+}
+
 
 /* Exemples d'utilisation si besoin */
 /* body { background-color: var(--bg); color: var(--text); } */

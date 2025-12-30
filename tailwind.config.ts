@@ -11,15 +11,12 @@ const config: Config = {
     ".flowbite-react\\class-list.json"
   ],
   theme: {
-    extend: {
-      colors: {
-        // Couleurs personnalisées pour Djephy Glod Business
-        primary: {
-          50: "#eff6ff",
-          600: "#2563eb",
-          700: "#1d4ed8",
-        },
-      },
+    colors: {
+      // Palette limitée : uniquement blanc et bleu
+      transparent: "transparent",
+      current: "currentColor",
+      white: require("tailwindcss/colors").white,
+      blue: require("tailwindcss/colors").blue,
     },
   },
   plugins: [flowbite, flowbiteReact],
