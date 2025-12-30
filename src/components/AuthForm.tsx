@@ -61,7 +61,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
     setStatus({ type: null, message: '' });
 
     try {
-      const response = await fetch('https://blessing.alwaysdata.net/api/auth.php', { 
+      const response = await fetch('http://ftp-blessing.alwaysdata.net/api/auth.php', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
