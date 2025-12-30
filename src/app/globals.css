@@ -1,8 +1,21 @@
 @import "tailwindcss";
+
+/* 1. Import Flowbite React plugin for Tailwind v4 */
 @import "flowbite-react/plugin/tailwindcss";
+
+/* 2. Tell Tailwind where the Flowbite classes are located */
 @source "../../.flowbite-react/class-list.json";
 
-/* Vous pouvez ajouter vos styles personnalisés ici */
+/* 3. Custom component styles */
 @layer components {
-  /* Styles personnalisés pour les composants Flowbite React */
+  /* Example: 
+     .btn-custom {
+        @apply px-4 py-2 bg-blue-500 text-white rounded-lg;
+     }
+  */
+}
+
+/* 4. Custom utility overrides (if needed) */
+@layer utilities {
+  /* Your custom utility classes here */
 }
