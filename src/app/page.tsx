@@ -135,30 +135,8 @@ export default function DjephyGoldBusiness() {
     setSavedForLater(prev => prev.filter(i => i.id !== id));
   }; 
 
-  // Detecter le mode sombre système et s'adapter en-live
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-
-    // Handler for modern browsers (receives MediaQueryListEvent)
-    const handleEvent = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-    // Legacy handler for older browsers that call the listener without an event
-    const legacyHandler = () => setIsDarkMode(mq.matches);
-
-    setIsDarkMode(mq.matches);
-
-    if (typeof mq.addEventListener === 'function') {
-      mq.addEventListener('change', handleEvent);
-      return () => mq.removeEventListener('change', handleEvent);
-    }
-
-    // Fallback for older browsers using addListener/removeListener (no explicit `any` usage)
-    if ('addListener' in mq) {
-      (mq as unknown as { addListener: (listener: () => void) => void }).addListener(legacyHandler);
-      return () => (mq as unknown as { removeListener: (listener: () => void) => void }).removeListener(legacyHandler);
-    }
-  }, []);
+  // Simulation/Placeholder pour isDarkMode si non fourni par un contexte
+  const isDarkMode = false; 
 
   const fetchLiveProducts = async () => {
       try {
@@ -248,7 +226,7 @@ export default function DjephyGoldBusiness() {
     const shipping = subtotalCartPrice >= FREE_SHIPPING_THRESHOLD ? 0 : (SHIPPING_COSTS[deliveryInfo.ville] || 0);
     const discountAmount = coupon ? (subtotalCartPrice * (coupon.percent / 100)) : 0;
     return Math.max(0, subtotalCartPrice - discountAmount + shipping);
-  }, [subtotalCartPrice, deliveryInfo.ville, coupon]);
+  }, [subtotalCartPrice, deliveryInfo.ville, coupon?.percent]);
 
   const filteredProducts = useMemo(() => {
     return ALL_PRODUCTS.filter(p => { 
@@ -325,7 +303,7 @@ export default function DjephyGoldBusiness() {
   }
 
   return (
-    <div className={`${isDarkMode ? 'bg-blue-900 text-white' : 'bg-white text-blue-900'} min-h-screen transition-colors duration-500 font-sans selection:bg-blue-500 selection:text-white`}>
+    <div className={`${isDarkMode ? 'bg-slate-900 text-white' : 'bg-[#fafafa] text-slate-900'} min-h-screen transition-colors duration-500 font-sans selection:bg-blue-500 selection:text-white`}>
       
       {/* HERO SECTION */}
       <section className="relative pt-32 pb-20 px-8">
@@ -338,12 +316,12 @@ export default function DjephyGoldBusiness() {
             <h1 className="text-5xl lg:text-7xl font-black leading-none mb-6 tracking-tighter uppercase">
               Le futur <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">à votre portée.</span>
             </h1>
-            <p className="text-blue-400 dark:text-blue-400 text-lg max-w-sm mb-10 leading-relaxed font-medium">
+            <p className="text-slate-500 dark:text-slate-400 text-lg max-w-sm mb-10 leading-relaxed font-medium">
               Vive l&apos;expérience Djephy Gold : Des produits authentiques livrés où que vous soyez.
             </p>
           </motion.div>
 
-          <div className="relative h-64 md:h-[400px] bg-white dark:bg-blue-800 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-blue-800">
+          <div className="relative h-64 md:h-[400px] bg-white dark:bg-slate-800 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-800">
             <AnimatePresence mode="wait">
               <motion.div
                 key={index}
@@ -542,13 +520,13 @@ export default function DjephyGoldBusiness() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCartOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div 
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: 'spring', damping: 25 }}
-              role="dialog" aria-modal="true" aria-label="Panier" className={`relative w-full max-w-md sm:max-w-sm md:max-w-md max-h-[92vh] sm:rounded-t-3xl md:rounded-l-3xl ${isDarkMode ? 'bg-slate-900 border-l border-slate-800' : 'bg-white'} shadow-2xl flex flex-col overflow-hidden`}
+              role="dialog" aria-modal="true" aria-label="Panier" className={`relative w-full max-w-md h-screen ${isDarkMode ? 'bg-slate-900 border-l border-slate-800' : 'bg-white'} shadow-2xl flex flex-col`}
             >
-              <div className="px-4 py-4 sm:px-6 sm:py-6 border-b dark:border-slate-800 flex justify-between items-center">
-                <span className="text-base sm:text-lg font-black flex items-center gap-2 uppercase italic tracking-tighter">
-                  <ShoppingBag size={18} className="text-blue-600" /> Mon Panier <span className="text-blue-600">({totalItems})</span>
+              <div className="px-6 py-6 border-b dark:border-slate-800 flex justify-between items-center">
+                <span className="text-lg font-black flex items-center gap-2 uppercase italic tracking-tighter">
+                  <ShoppingBag size={20} className="text-blue-600" /> Mon Panier <span className="text-blue-600">({totalItems})</span>
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {cart.length > 0 && (
                     <button aria-label="Vider le panier" onClick={() => { if (confirm('Vider le panier ?')) clearCart(); }} className="text-[10px] font-bold text-red-500 uppercase focus:outline-none focus:ring-2 focus:ring-red-400">Vider</button>
                   )}
@@ -556,7 +534,7 @@ export default function DjephyGoldBusiness() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {cart.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400">
                     <ShoppingBag size={48} strokeWidth={1} className="mb-4 opacity-20" />
@@ -566,8 +544,8 @@ export default function DjephyGoldBusiness() {
                   <>
                     <div className="space-y-4">
                       {cart.map((item) => (
-                        <div key={item.id} className={`flex gap-3 p-3 sm:p-4 ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'} rounded-2xl border dark:border-slate-800 items-start`}>
-                          <div className="relative w-12 h-12 sm:w-16 sm:h-16 overflow-hidden rounded-lg">
+                        <div key={item.id} className={`flex gap-4 p-4 ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'} rounded-2xl border dark:border-slate-800`}>
+                          <div className="relative w-16 h-16 overflow-hidden rounded-xl">
                             <Image src={item.img} alt={item.nom} fill className="object-cover" />
                           </div>
                           <div className="flex-1">
@@ -692,17 +670,17 @@ export default function DjephyGoldBusiness() {
 
       {/* BOUTON FLOTTANT PANIER */}
       {!isCartOpen && cart.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-center">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center">
           <AnimatePresence>
             {showAddedTooltip && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: -4 }} exit={{ opacity: 0 }} className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full mb-2 shadow-xl uppercase tracking-widest">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -5 }} exit={{ opacity: 0 }} className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full mb-2 shadow-xl uppercase tracking-widest">
                 Ajouté !
               </motion.div>
             )}
           </AnimatePresence>
-          <button onClick={() => setIsCartOpen(true)} className={`p-3 sm:p-4 rounded-full bg-blue-600 text-white shadow-2xl relative transition-all active:scale-90 ${isCartWiggling ? 'animate-wiggle' : 'hover:scale-110'}`}>
-            <ShoppingCart size={18} />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-[9px] w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold border-2 border-white">{totalItems}</span>
+          <button onClick={() => setIsCartOpen(true)} className={`p-4 sm:p-5 rounded-full bg-blue-600 text-white shadow-2xl relative transition-all active:scale-90 ${isCartWiggling ? 'animate-wiggle' : 'hover:scale-110'}`}>
+            <ShoppingCart size={20} />
+            <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center font-bold border-2 border-white">{totalItems}</span>
           </button>
         </div>
       )}
