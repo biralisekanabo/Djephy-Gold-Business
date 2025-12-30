@@ -184,7 +184,7 @@ export default function DjephyGoldBusiness() {
     const fetchLiveProducts = async () => {
       try {
         const res = await fetch(
-          "http://localhost/api/admin_manage.php?action=list",
+          "https://blessing.alwaysdata.net/api/admin_manage.php?action=list",
         );
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -389,7 +389,7 @@ export default function DjephyGoldBusiness() {
         prix_unitaire: item.prix,
       }));
 
-      const response = await fetch("http://localhost/api/passer_commande.php", {
+      const response = await fetch("https://blessing.alwaysdata.net/api/passer_commande.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

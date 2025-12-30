@@ -134,7 +134,7 @@ export default function AdminPage() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('http://localhost/api/admin_manage.php?action=list');
+      const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php?action=list');
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
     } catch {
@@ -147,7 +147,7 @@ export default function AdminPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('http://localhost/api/admin_manage.php?action=list_orders');
+      const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php?action=list_orders');
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch {
@@ -173,7 +173,7 @@ export default function AdminPage() {
 
   const updateOrderStatus = async (orderId: number) => {
     try {
-      const res = await fetch('http://localhost/api/admin_manage.php', {
+      const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -194,7 +194,7 @@ export default function AdminPage() {
   const deleteOrder = async (orderId: number) => {
     if(!confirm("Supprimer définitivement cette commande et son historique ?")) return;
     try {
-      const res = await fetch('http://localhost/api/admin_manage.php', {
+      const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -227,7 +227,7 @@ export default function AdminPage() {
     setLoading(true);
     const actionType = editingId ? 'update' : 'add';
     try {
-      const res = await fetch('http://localhost/api/admin_manage.php', {
+      const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -255,7 +255,7 @@ export default function AdminPage() {
   const handleDelete = async (id: number) => {
     if(!confirm("Supprimer ce produit ?")) return;
     try {
-        const res = await fetch('http://localhost/api/admin_manage.php', {
+        const res = await fetch('https://blessing.alwaysdata.net/api/admin_manage.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'delete', id })
