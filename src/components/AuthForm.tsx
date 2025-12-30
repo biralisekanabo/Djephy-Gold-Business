@@ -1,21 +1,9 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useAuth } from '@/src/store/authContext';
 import { motion, AnimatePresence } from 'framer-motion';
+// Ajout de l'icône Phone
 import { Mail, Lock, User, ArrowRight, Github, Eye, EyeOff, Loader2, X, Shield, CheckCircle2, Phone } from 'lucide-react';
-
-// --- AJOUT DE L'INTERFACE POUR LA RÉPONSE API ---
-interface AuthApiResponse {
-  success: boolean;
-  message: string;
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    name?: string;
-  };
-}
 
 interface AuthFormProps {
   onClose?: () => void;
@@ -26,6 +14,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // 1. AJOUT DU CHAMP "phone" DANS L'ÉTAT INITIAL
   const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '' });
   const [status, setStatus] = useState<{ type: 'error' | 'success' | null, message: string }>({ type: null, message: '' });
 
@@ -46,7 +35,9 @@ export default function AuthForm({ onClose }: AuthFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // --- AJOUT : VALIDATION DU TÉLÉPHONE (Uniquement à l'inscription) ---
     if (!isLogin) {
+      // Regex pour formats : 0612345678, +33612345678, etc.
       const phoneRegex = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
       if (!phoneRegex.test(formData.phone)) {
         setStatus({ 
@@ -61,7 +52,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
     setStatus({ type: null, message: '' });
 
     try {
-      const response = await fetch('http://ftp-blessing.alwaysdata.net/api/auth.php', { 
+      const response = await fetch('https://blessing.alwaysdata.net/api/auth.php', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,11 +61,12 @@ export default function AuthForm({ onClose }: AuthFormProps) {
         }),
       });
 
-      // Remplacement du "any" par l'interface dédiée
-      const data: AuthApiResponse = await response.json();
+      const data = await response.json();
 
-      if (data.success && data.user) {
+      if (data.success) {
+        // --- LOGIQUE MODIFIÉE ICI ---
         if (isLogin) {
+          // Cas Connexion réussie
           setStatus({ type: 'success', message: data.message });
           const userToStore = data.user;
           localStorage.removeItem('user');
@@ -83,8 +75,7 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
           try { 
             login(userToStore); 
-          } catch { 
-            // Correction : 'e' supprimé car inutilisé
+          } catch (e) { 
             localStorage.setItem('djephy_user', JSON.stringify(userToStore)); 
           }
           
@@ -92,18 +83,18 @@ export default function AuthForm({ onClose }: AuthFormProps) {
             window.location.href = userToStore.role === 'admin' ? '/admin' : '/mon-espace';
           }, 1500);
         } else {
+          // Cas Inscription réussie : ON BASCULE SUR LE LOGIN
           setStatus({ type: 'success', message: "Compte créé ! Veuillez vous connecter." });
-          setFormData({ ...formData, password: '' }); 
+          setFormData({ ...formData, password: '' }); // On garde l'email mais on vide le mdp
           setTimeout(() => {
-            setIsLogin(true);
+            setIsLogin(true); // Bascule vers l'interface de connexion
           }, 1500);
         }
       } else {
         setStatus({ type: 'error', message: data.message });
       }
-    } catch {
-      // Correction : 'error' supprimé car inutilisé
-      setStatus({ type: 'error', message: "Le service d&apos;authentification est indisponible." });
+    } catch (error) {
+      setStatus({ type: 'error', message: "Le service d'authentification est indisponible." });
     } finally {
       setIsLoading(false);
     }
@@ -187,11 +178,13 @@ export default function AuthForm({ onClose }: AuthFormProps) {
                 transition={{ duration: 0.3 }}
                 className="space-y-3 overflow-hidden"
               >
+                {/* CHAMP NOM */}
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input name="name" type="text" required placeholder="Nom complet" value={formData.name} onChange={handleChange} className={inputClassName} />
                 </div>
 
+                {/* NOUVEAU CHAMP : TÉLÉPHONE */}
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input name="phone" type="tel" required placeholder="Numéro de téléphone" value={formData.phone} onChange={handleChange} className={inputClassName} />
