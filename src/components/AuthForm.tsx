@@ -99,7 +99,9 @@ export default function AuthForm({ onClose }: AuthFormProps) {
 
           try {
             login(userToStore);
-          } catch {
+          } catch (e) {
+            // On utilise la variable pour éviter l'erreur ESLint sans supprimer la ligne
+            void e;
             localStorage.setItem("djephy_user", JSON.stringify(userToStore));
           }
 
@@ -121,7 +123,9 @@ export default function AuthForm({ onClose }: AuthFormProps) {
       } else {
         setStatus({ type: "error", message: data.message });
       }
-    } catch {
+    } catch (error) {
+      // On utilise la variable pour éviter l'erreur ESLint sans supprimer la ligne
+      void error;
       setStatus({
         type: "error",
         message: "Le service d'authentification est indisponible.",
