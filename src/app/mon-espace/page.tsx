@@ -8,6 +8,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// --- TYPES ---
 interface OrderItem {
   nom_produit: string;
   quantite: number;
@@ -34,7 +35,7 @@ interface UserData {
   orders: Order[];
 }
 
-
+// Fixed the 'any' type for jsPDF internal property
 interface ExtendedJsPDF extends jsPDF {
   lastAutoTable: {
     finalY: number;
@@ -93,7 +94,7 @@ export default function DashboardPage() {
       styles: { fontSize: 9 },
     });
 
-    // Total 
+    // Total - Using the extended type instead of 'any'
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
@@ -126,7 +127,7 @@ export default function DashboardPage() {
           throw new Error("Identifiant utilisateur introuvable.");
         }
 
-        const response = await fetch(`https://blessing.alwaysdata.net/api/passer_commande.php?id_utilisateur=${userId}`, {
+        const response = await fetch(`http://127.0.0.1/api/passer_commande.php?id_utilisateur=${userId}`, {
           method: 'GET',
           headers: { 'Cache-Control': 'no-cache', 'Accept': 'application/json' }
         });
@@ -178,21 +179,21 @@ export default function DashboardPage() {
   if (loading) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center">
       <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-      <p className="text-blue-400 font-bold text-[10px] uppercase tracking-widest">Chargement...</p>
+      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Synchronisation...</p>
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-white p-10 rounded-[3rem] border border-blue-100 shadow-xl max-w-md">
-           <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white p-10 rounded-[3rem] border border-zinc-200 shadow-xl max-w-md">
+           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
              <Package size={32} />
            </div>
-           <p className="font-black uppercase text-[10px] text-blue-600 mb-2">Erreur système</p>
-           <p className="text-sm font-bold text-blue-600 mb-8">{error}</p>
+           <p className="font-black uppercase text-[10px] text-red-600 mb-2">Erreur système</p>
+           <p className="text-sm font-bold text-zinc-600 mb-8">{error}</p>
            <button 
              onClick={() => { localStorage.clear(); window.location.href = '/'; }}
-             className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs hover:bg-blue-800 transition-all"
+             className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase text-xs hover:bg-zinc-800 transition-all"
            >
              {/* Fixed unescaped entity here */}
              Retourner à l&apos;accueil
@@ -202,8 +203,8 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white text-blue-900 font-sans selection:bg-blue-100">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-blue-100 px-6 py-4">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-blue-100">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-xl">
@@ -213,16 +214,16 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-5">
-            <button onClick={() => window.location.href = '/'} className="flex items-center gap-2 bg-blue-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase hover:bg-blue-800 transition-all">
+            <button onClick={() => window.location.href = '/'} className="flex items-center gap-2 bg-zinc-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase hover:bg-blue-600 transition-all">
               <ShoppingBag size={14} /> Boutique
             </button>
 
             <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input 
                 type="text" 
                 placeholder="Rechercher..."
-                className="pl-10 pr-4 py-2 bg-blue-50 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600/20 transition-all w-48 focus:w-64"
+                className="pl-10 pr-4 py-2 bg-zinc-100 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-600/20 transition-all w-48 focus:w-64"
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
@@ -243,7 +244,7 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-12 gap-10">
           
           <aside className="lg:col-span-4 space-y-6">
-            <section className="bg-blue-50 border border-blue-100 p-8 rounded-[2.5rem]">
+            <section className="bg-zinc-50 border border-zinc-100 p-8 rounded-[2.5rem]">
               <div className="mb-8">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-2">Profil Utilisateur</p>
                 <h2 className="text-3xl font-black leading-tight truncate">
@@ -252,30 +253,30 @@ export default function DashboardPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-white p-4 rounded-2xl border border-blue-100">
-                    <p className="text-[9px] font-bold text-blue-400 uppercase">Email associé</p>
+                <div className="bg-white p-4 rounded-2xl border border-zinc-100">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Email associé</p>
                     <p className="text-sm font-bold truncate">{data?.profile?.email || 'N/A'}</p>
                 </div>
 
-                <div className="bg-white p-4 rounded-2xl border border-blue-100">
-                    <p className="text-[9px] font-bold text-blue-400 uppercase">Cumul des achats</p>
+                <div className="bg-white p-4 rounded-2xl border border-zinc-100">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Cumul des achats</p>
                     <p className="text-sm font-black text-blue-600">{totalSpent} $</p>
                 </div>
                 
                 <button 
                     onClick={() => { localStorage.clear(); window.location.href='/'; }} 
-                    className="w-full mt-4 py-4 border border-blue-100 text-blue-500 rounded-2xl font-black uppercase text-[10px] hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                    className="w-full mt-4 py-4 border border-zinc-200 text-red-500 rounded-2xl font-black uppercase text-[10px] hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                 >
-                    <LogOut size={16} /> Deconnexion
+                    <LogOut size={16} /> Quitter la session
                 </button>
               </div>
             </section>
           </aside>
 
           <div className="lg:col-span-8">
-<div className="flex items-center justify-between mb-8" id="orders">
+            <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-black uppercase tracking-tighter italic">Historique</h3>
-                <span className="bg-blue-900 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase">
+                <span className="bg-zinc-900 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase">
                     {filteredOrders.length} {filteredOrders.length > 1 ? 'Commandes' : 'Commande'}
                 </span>
             </div>
@@ -300,7 +301,7 @@ export default function DashboardPage() {
                       >
                         <div className="flex items-center gap-5">
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
-                            expandedOrder === order.id ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-400'
+                            expandedOrder === order.id ? 'bg-blue-600 text-white' : 'bg-zinc-50 text-zinc-400'
                           }`}>
                             <ShoppingBag size={22} />
                           </div>
@@ -315,13 +316,13 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-6">
                           <div className="text-right">
                             <p className="text-lg font-black text-blue-600">{parseFloat(String(order.prix_total)).toFixed(2)} $</p>
-                            <div className="flex items-center justify-end gap-1 text-blue-600">
+                            <div className="flex items-center justify-end gap-1 text-green-500">
                               <CheckCircle size={10} />
                               <span className="text-[9px] font-black uppercase">{order.statut}</span>
                             </div>
                           </div>
                           <motion.div animate={{ rotate: expandedOrder === order.id ? 90 : 0 }}>
-                            <ChevronRight size={18} className="text-blue-300" />
+                            <ChevronRight size={18} className="text-zinc-300" />
                           </motion.div>
                         </div>
                       </div>
@@ -332,14 +333,14 @@ export default function DashboardPage() {
                             initial={{ height: 0, opacity: 0 }} 
                             animate={{ height: "auto", opacity: 1 }} 
                             exit={{ height: 0, opacity: 0 }}
-                            className="bg-blue-50/50 border-t border-blue-100"
+                            className="bg-zinc-50/50 border-t border-zinc-100"
                           >
                             <div className="p-6 space-y-3">
                               <div className="flex justify-between items-center mb-4">
-                                <p className="text-[10px] font-black uppercase text-blue-400">Détails des articles</p>
+                                <p className="text-[10px] font-black uppercase text-zinc-400">Détails des articles</p>
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); generatePDF(order); }}
-                                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-800 transition-all"
+                                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-black transition-all"
                                 >
                                   <Download size={14} /> Facture
                                 </button>
@@ -348,17 +349,17 @@ export default function DashboardPage() {
                               <div className="grid gap-2">
                                 {order.items && order.items.length > 0 ? (
                                     order.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-blue-100">
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-zinc-100">
                                         <div className="flex items-center gap-4">
                                             <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">
                                                 {item.quantite}x
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-blue-900">{item.nom_produit}</p>
-                                                <p className="text-[9px] text-blue-400 font-bold uppercase">Unit: {parseFloat(String(item.prix_unitaire)).toFixed(2)} $</p>
+                                                <p className="text-sm font-bold text-zinc-800">{item.nom_produit}</p>
+                                                <p className="text-[9px] text-zinc-400 font-bold uppercase">Unit: {parseFloat(String(item.prix_unitaire)).toFixed(2)} $</p>
                                             </div>
                                         </div>
-                                        <p className="text-sm font-black text-blue-900">{(item.quantite * parseFloat(String(item.prix_unitaire))).toFixed(2)} $</p>
+                                        <p className="text-sm font-black text-zinc-900">{(item.quantite * parseFloat(String(item.prix_unitaire))).toFixed(2)} $</p>
                                     </div>
                                     ))
                                 ) : (
@@ -372,9 +373,9 @@ export default function DashboardPage() {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="py-24 text-center border-2 border-dashed border-blue-100 rounded-[3rem]">
-                    <Search className="mx-auto text-blue-200 mb-4" size={48} />
-                    <p className="text-blue-400 font-bold uppercase text-[10px] tracking-widest">Aucune commande</p>
+                  <div className="py-24 text-center border-2 border-dashed border-zinc-100 rounded-[3rem]">
+                    <Search className="mx-auto text-zinc-200 mb-4" size={48} />
+                    <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest">Aucune commande</p>
                   </div>
                 )}
               </AnimatePresence>
