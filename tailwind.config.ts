@@ -3,6 +3,8 @@ const flowbite = require("flowbite-react/plugin");
 const flowbiteReact = require("flowbite-react/plugin/tailwindcss");
 
 const config: Config = {
+  // Activer le dark mode en se basant sur la préférence système
+  darkMode: 'media',
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

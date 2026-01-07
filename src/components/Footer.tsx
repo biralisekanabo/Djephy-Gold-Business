@@ -18,7 +18,7 @@ const Footer: React.FC = () => {
               Djephy<span className="text-amber-500">Gold</span>
             </span>
           </Link>
-          {/* CORRECTION CI-DESSOUS : Utilisation de &apos; pour l'apostrophe */}
+          
           <p className="text-gray-400 text-sm leading-relaxed">
             L&apos;excellence technologique à votre portée. Smartphones, ordinateurs et accessoires à Butembo.
           </p>
@@ -92,7 +92,7 @@ const Footer: React.FC = () => {
       {/* Barre de Copyright */}
       <div className="max-w-7xl mx-auto border-t border-white/5 mt-20 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500 uppercase tracking-widest">
         <div className="flex items-center gap-1 font-medium">
-          © {new Date().getFullYear()} <span className="text-amber-500 font-bold">Djephy Gold Business</span>.
+          © {new Date().getFullYear()} <span className="text-amber-200 font-bold">PRINT CREATIVE</span>.
         </div>
         <div className="flex gap-6 font-bold">
           <Link href="#" className="hover:text-white transition-colors">Vie privée</Link>

@@ -11,6 +11,7 @@ import {
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { createReportPDF } from '../../lib/pdfTemplates';
 
 // --- Interfaces pour la robustesse du code ---
 interface Product {
@@ -71,45 +72,7 @@ export default function AdminPage() {
   }, 0);
 
   const generateGlobalReport = () => {
-    const doc = new jsPDF() as jsPDFWithAutotable;
-    const dateStr = new Date().toLocaleDateString();
-
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text("DJEPHY DIGITAL - RAPPORT GLOBAL", 14, 25);
-    doc.setFontSize(10);
-    doc.text(`Généré le : ${dateStr}`, 14, 32);
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.text("Résumé de l'Activité", 14, 55);
-    doc.setFontSize(11);
-    doc.text(`Chiffre d'Affaires Total (Livré): ${CA.toLocaleString()} $`, 14, 65);
-    doc.text(`Total produits en catalogue: ${products.length}`, 14, 72);
-    doc.text(`Unités totales en stock: ${totalStock}`, 14, 79);
-
-    doc.text("État détaillé du Stock", 14, 95);
-    autoTable(doc, {
-      startY: 100,
-      head: [['ID', 'Nom', 'Catégorie', 'Prix Unit.', 'Stock']],
-      body: products.map(p => [p.id, p.nom, p.cat, `${p.prix} $`, p.stock]),
-      headStyles: { fillColor: [37, 99, 235] },
-    });
-
-    // Utilisation du type étendu au lieu de 'any'
-    const finalY = doc.lastAutoTable?.finalY || 150;
-    const lastY = finalY + 15;
-    doc.text("Historique des Commandes Récentes", 14, lastY);
-    autoTable(doc, {
-      startY: lastY + 5,
-      head: [['ID', 'Client', 'Articles', 'Total', 'Statut']],
-      body: orders.map(o => [o.id, o.client_name, o.items_details || 'Aucun détail', `${o.total_price} $`, o.status]),
-      headStyles: { fillColor: [0, 0, 0] },
-    });
-
-    doc.save(`Rapport_Global_Djephy_${dateStr.replace(/\//g, '-')}.pdf`);
+    createReportPDF(products, orders, { title: `Rapport Global Djephy - ${new Date().toLocaleDateString()}` });
   };
 
   useEffect(() => {
@@ -565,7 +528,7 @@ export default function AdminPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Top Performance</p>
-                    <p className="text-xs font-bold text-zinc-400 uppercase">Produit le plus en stock :</p>
+                    <p className="text-xs font-bold text-zinc-400 uppercase">Produit récemment ajouter :</p>
                     <p className="text-xl font-black italic mt-1">
                         {products.length > 0 ? [...products].sort((a,b) => {
                            const stockA = typeof a.stock === 'string' ? parseInt(a.stock) : a.stock;

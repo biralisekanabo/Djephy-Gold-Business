@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { createInvoicePDF } from '../../lib/pdfTemplates';
 
 // --- TYPES ---
 interface OrderItem {
@@ -49,63 +50,9 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
-  // --- GÉNÉRATION DE FACTURE PDF ---
+  // Use centralized invoice template for consistent and prettier styling
   const generatePDF = (order: Order) => {
-    const doc = new jsPDF() as ExtendedJsPDF;
-    
-    // En-tête
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text("FACTURE", 15, 25);
-    
-    doc.setFontSize(10);
-    doc.text(`Référence : #CMD-${order.id}`, 15, 33);
-
-    // Infos Client & Boutique
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("DESTINATAIRE :", 15, 55);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${data?.profile?.nom_complet || data?.profile?.nom || 'Client'}`, 15, 62);
-    doc.text(`${data?.profile?.email || ''}`, 15, 68);
-    doc.text(`Ville : ${order.ville || 'Non précisée'}`, 15, 74);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("ÉMETTEUR :", 140, 55);
-    doc.setFont("helvetica", "normal");
-    doc.text("Ma Boutique en Ligne", 140, 62);
-    doc.text(`Date : ${order.date_commande}`, 140, 68);
-
-    const tableRows = (order.items || []).map((item) => [
-      item.nom_produit,
-      item.quantite.toString(),
-      `${parseFloat(String(item.prix_unitaire)).toFixed(2)} $`,
-      `${(item.quantite * parseFloat(String(item.prix_unitaire))).toFixed(2)} $`
-    ]);
-
-    autoTable(doc, {
-      startY: 85,
-      head: [['Produit', 'Qté', 'Prix Unitaire', 'Sous-total']],
-      body: tableRows,
-      headStyles: { fillColor: [37, 99, 235] },
-      styles: { fontSize: 9 },
-    });
-
-    // Total - Using the extended type instead of 'any'
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text(`MONTANT TOTAL : ${parseFloat(String(order.prix_total)).toFixed(2)} $`, 130, finalY);
-
-    // Pied de page
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text("Merci pour votre achat ! Ce document est une preuve de transaction.", 105, 285, { align: "center" });
-
-    doc.save(`Facture_Commande_${order.id}.pdf`);
+    createInvoicePDF(order, data?.profile);
   };
 
   useEffect(() => {

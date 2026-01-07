@@ -152,6 +152,30 @@ export default function DjephyGoldBusiness() {
   const [isSuccess, setIsSuccess] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDarkMode, setIsDarkMode] = useState(false);
+    // Sync with OS/browser dark mode preference so design adapts automatically
+    useEffect(() => {
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+        setIsDarkMode(Boolean((e as any).matches));
+      };
+      // initial value
+      setIsDarkMode(mq.matches);
+      // add listener (support older and newer APIs)
+      if (typeof mq.addEventListener === 'function') {
+        mq.addEventListener('change', handler as any);
+      } else if (typeof mq.addListener === 'function') {
+        // deprecated but present in some browsers
+        mq.addListener(handler as any);
+      }
+      return () => {
+        if (typeof mq.removeEventListener === 'function') {
+          mq.removeEventListener('change', handler as any);
+        } else if (typeof mq.removeListener === 'function') {
+          mq.removeListener(handler as any);
+        }
+      };
+    }, []);
   const [deliveryInfo, setDeliveryInfo] = useState({
     nom: "",
     ville: Object.keys(SHIPPING_COSTS)[0],
