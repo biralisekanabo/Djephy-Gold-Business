@@ -5,8 +5,6 @@ import {
   Package, LogOut, Search, ShoppingBag,
   ChevronRight, CheckCircle, Loader2, Download 
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { createInvoicePDF } from '../../lib/pdfTemplates';
 
 // --- TYPES ---
@@ -36,12 +34,6 @@ interface UserData {
   orders: Order[];
 }
 
-// Fixed the 'any' type for jsPDF internal property
-interface ExtendedJsPDF extends jsPDF {
-  lastAutoTable: {
-    finalY: number;
-  };
-}
 
 export default function DashboardPage() {
   const [data, setData] = useState<UserData | null>(null);

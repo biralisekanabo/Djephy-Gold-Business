@@ -1,6 +1,12 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+interface JsPDFWithAutoTable extends jsPDF {
+  lastAutoTable?: {
+    finalY: number;
+  };
+}
+
 type OrderItem = {
   nom_produit: string;
   quantite: number;
@@ -24,12 +30,12 @@ type Product = {
   stock?: number | string;
 };
 
-const BRAND_RGB = [37, 99, 235]; // blue
+const BRAND_RGB: [number, number, number] = [37, 99, 235]; // blue
 
-export function createInvoicePDF(order: Order, profile?: any) {
-  const doc = new jsPDF();
+export function createInvoicePDF(order: Order, profile?: { nom_complet?: string; nom?: string; email?: string }) {
+  const doc = new jsPDF() as JsPDFWithAutoTable;
   // Header
-  doc.setFillColor(...BRAND_RGB);
+  doc.setFillColor(BRAND_RGB[0], BRAND_RGB[1], BRAND_RGB[2]);
   doc.rect(0, 0, 210, 48, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
@@ -79,7 +85,7 @@ export function createInvoicePDF(order: Order, profile?: any) {
   });
 
   // Total
-  const finalY = (doc as any).lastAutoTable?.finalY || 140;
+  const finalY = doc.lastAutoTable?.finalY || 140;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`MONTANT TOTAL : ${(parseFloat(String(order.prix_total || '0'))).toFixed(2)} $`, 130, finalY + 12);
@@ -92,12 +98,20 @@ export function createInvoicePDF(order: Order, profile?: any) {
   doc.save(`Facture_Commande_${order.id}.pdf`);
 }
 
-export function createReportPDF(products: Product[], orders: any[], opts?: { title?: string }) {
-  const doc = new jsPDF();
+type OrderReport = {
+  id: string | number;
+  client_name?: string;
+  items_details?: string;
+  total_price?: string | number;
+  status?: string;
+};
+
+export function createReportPDF(products: Product[], orders: OrderReport[], opts?: { title?: string }) {
+  const doc = new jsPDF() as JsPDFWithAutoTable;
   const title = opts?.title || 'Rapport Global Djephy Gold';
 
   // Header band
-  doc.setFillColor(...BRAND_RGB);
+  doc.setFillColor(BRAND_RGB[0], BRAND_RGB[1], BRAND_RGB[2]);
   doc.rect(0, 0, 210, 48, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
@@ -126,18 +140,18 @@ export function createReportPDF(products: Product[], orders: any[], opts?: { tit
     styles: { fontSize: 9 },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 140;
+  const finalY = doc.lastAutoTable?.finalY || 140;
   doc.text('Commandes récentes', 14, finalY + 12);
 
   autoTable(doc, {
     startY: finalY + 18,
     head: [['ID', 'Client', 'Articles', 'Total', 'Statut']],
-    body: orders.map((o: any) => [String(o.id), o.client_name || '-', o.items_details || '-', `${o.total_price || '-'} $`, o.status || '-']),
+    body: orders.map((o: OrderReport) => [String(o.id), o.client_name || '-', o.items_details || '-', `${o.total_price || '-'} $`, o.status || '-']),
     headStyles: { fillColor: [80, 80, 80], textColor: 255 },
     styles: { fontSize: 9 },
   });
-
   doc.save(`Rapport_Global_Djephy_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
 }
 
-export default { createInvoicePDF, createReportPDF };
+const pdfTemplates = { createInvoicePDF, createReportPDF };
+export default pdfTemplates;

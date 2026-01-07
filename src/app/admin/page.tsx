@@ -9,8 +9,6 @@ import {
   Monitor, Battery, Cpu, FileText, Download, CheckCircle2 
 } from 'lucide-react';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { createReportPDF } from '../../lib/pdfTemplates';
 
 // --- Interfaces pour la robustesse du code ---
@@ -38,12 +36,6 @@ interface Order {
   created_at?: string;
 }
 
-// Extension du type jsPDF pour inclure la propriété ajoutée par autotable
-interface jsPDFWithAutotable extends jsPDF {
-  lastAutoTable?: {
-    finalY: number;
-  };
-}
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(false);
