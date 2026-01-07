@@ -1,17 +1,18 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image'; // Importation pour l'optimisation des images
+import Image from 'next/image'; 
 import { 
   PlusCircle, LayoutDashboard, Image as ImageIcon, Loader2, 
   Sparkles, Menu, X, Upload, Trash2, Edit3, 
   LogOut, ShoppingBag, User, Phone, MapPin, Package, TrendingUp,
-  Monitor, Battery, Cpu, FileText, Download, CheckCircle2 
+  Monitor, Battery, Cpu, FileText, Download, CheckCircle2,
+  Search, Filter, AlertTriangle, ArrowUpRight
 } from 'lucide-react';
 
 import { createReportPDF } from '../../lib/pdfTemplates';
 
-// --- Interfaces pour la robustesse du code ---
+// --- Interfaces ---
 interface Product {
   id: number;
   nom: string;
@@ -36,16 +37,20 @@ interface Order {
   created_at?: string;
 }
 
-
 export default function AdminPage() {
   const [loading, setLoading] = useState(false);
-  const [, setFetching] = useState(true); // Suppression de l'avertissement 'fetching' inutilisé
+  const [, setFetching] = useState(true); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]); 
   const [view, setView] = useState('products'); 
   
+  // --- Nouvelles fonctionnalités de recherche et filtrage ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCat, setFilterCat] = useState('All');
+  const [orderSearch, setOrderSearch] = useState('');
+
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [newProduct, setNewProduct] = useState({
@@ -62,6 +67,22 @@ export default function AdminPage() {
     const val = typeof curr.stock === 'string' ? parseInt(curr.stock) : curr.stock;
     return acc + (isNaN(val) ? 0 : val);
   }, 0);
+
+  // Nouvel indicateur : Panier Moyen
+  const averageOrder = orders.length > 0 ? (CA / orders.filter(o => o.status === 'Livré').length || 0) : 0;
+
+  // Filtrage des produits en temps réel
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = filterCat === 'All' || p.cat === filterCat;
+    return matchesSearch && matchesCat;
+  });
+
+  // Filtrage des commandes
+  const filteredOrders = orders.filter(o => 
+    (o.client_name?.toLowerCase().includes(orderSearch.toLowerCase())) ||
+    (o.phone?.includes(orderSearch))
+  );
 
   const generateGlobalReport = () => {
     createReportPDF(products, orders, { title: `Rapport Global Djephy - ${new Date().toLocaleDateString()}` });
@@ -280,7 +301,7 @@ export default function AdminPage() {
               <p className="text-blue-600 text-xs font-bold uppercase tracking-widest mt-1">Djephy Digital Premium</p>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
                <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-200 flex items-center gap-3">
                   <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><TrendingUp size={16}/></div>
                   <div>
@@ -303,7 +324,7 @@ export default function AdminPage() {
 
           {view === 'products' ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-zinc-100 space-y-8">
+              <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-zinc-100 space-y-8 h-fit sticky top-6">
                 {editingId && (
                   <div className="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
                     <p className="text-[10px] font-black text-blue-600 uppercase">Mode Édition Activé</p>
@@ -355,13 +376,14 @@ export default function AdminPage() {
                     <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                     <div className="w-full p-8 border-2 border-dashed border-zinc-200 rounded-[2rem] flex flex-col items-center justify-center gap-2 group-hover:bg-blue-50 group-hover:border-blue-600 transition-all">
                       {newProduct.image ? (
-                        <Image 
-                          src={newProduct.image} 
-                          width={80} 
-                          height={80} 
-                          className="object-contain rounded-lg shadow-md" 
-                          alt="Preview" 
-                        />
+                        <div className="relative w-20 h-20">
+                          <Image 
+                            src={newProduct.image} 
+                            fill
+                            className="object-contain rounded-lg shadow-md" 
+                            alt="Preview" 
+                          />
+                        </div>
                       ) : (
                         <Upload size={24} className="text-zinc-300 group-hover:text-blue-600" />
                       )}
@@ -373,168 +395,245 @@ export default function AdminPage() {
                   {loading ? <Loader2 className="animate-spin" /> : editingId ? "Enregistrer les modifications" : "Publier sur la boutique"}
                 </button>
               </form>
-              <div className="lg:col-span-5 space-y-8">
-                <div className="bg-white p-4 rounded-[2.5rem] border border-zinc-200 shadow-sm flex items-center justify-center aspect-square overflow-hidden relative">
-                  {newProduct.image ? (
-                    <Image src={newProduct.image} fill className="object-contain p-4" alt="Preview" />
-                  ) : (
-                    <div className="text-center">
-                      <ImageIcon size={48} className="text-zinc-100 mx-auto" />
-                      <p className="text-[10px] font-black uppercase text-zinc-300 tracking-widest mt-2">Aperçu direct</p>
-                    </div>
-                  )}
-                </div>
+
+              <div className="lg:col-span-5 space-y-6">
+                {/* --- Nouveaux filtres de recherche --- */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 px-2">Liste du Catalogue</h3>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 overflow-x-hidden">
-                    <AnimatePresence>
-                      {products.map((p) => (
-                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={p.id} className="bg-white p-3 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between group">
-                          <div className="flex items-center gap-3">
-                            <Image 
-                              src={p.image} 
-                              width={40} 
-                              height={40} 
-                              className="rounded-lg object-cover bg-zinc-50" 
-                              alt={p.nom} 
-                            />
-                            <div>
-                              <p className="text-xs font-black truncate max-w-[120px]">{p.nom}</p>
-                              <p className="text-[10px] font-bold text-orange-600">{p.prix} $</p>
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                    <input 
+                      type="text" 
+                      placeholder="Rechercher un produit..." 
+                      className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-2xl text-xs font-bold focus:ring-2 ring-blue-500 outline-none"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {['All', 'Phone', 'PC', 'Watch', 'Accessoires'].map(cat => (
+                      <button 
+                        key={cat}
+                        onClick={() => setFilterCat(cat)}
+                        className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${filterCat === cat ? 'bg-black text-white' : 'bg-white text-zinc-400 border border-zinc-100 hover:bg-zinc-50'}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400">Catalogue ({filteredProducts.length})</h3>
+                  </div>
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 overflow-x-hidden custom-scrollbar">
+                    <AnimatePresence mode='popLayout'>
+                      {filteredProducts.map((p) => {
+                        const stockVal = typeof p.stock === 'string' ? parseInt(p.stock) : p.stock;
+                        return (
+                          <motion.div 
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }} 
+                            animate={{ opacity: 1, scale: 1 }} 
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            key={p.id} 
+                            className={`bg-white p-3 rounded-2xl border ${editingId === p.id ? 'border-blue-500 ring-2 ring-blue-50' : 'border-zinc-100'} shadow-sm flex items-center justify-between group`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-12 w-12 flex-shrink-0">
+                                <Image 
+                                  src={p.image} 
+                                  fill
+                                  className="rounded-lg object-cover bg-zinc-50" 
+                                  alt={p.nom} 
+                                />
+                              </div>
+                              <div>
+                                <p className="text-xs font-black truncate max-w-[120px]">{p.nom}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] font-bold text-orange-600">{p.prix} $</p>
+                                  <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${stockVal <= 2 ? 'bg-red-50 text-red-600' : 'bg-zinc-50 text-zinc-400'}`}>
+                                    Stock: {stockVal}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex gap-1">
-                            <button type="button" onClick={() => prepareEdit(p)} className="p-2 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                              <Edit3 size={16} />
-                            </button>
-                            <button type="button" onClick={() => handleDelete(p.id)} className="p-2 text-zinc-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
+                            <div className="flex gap-1">
+                              <button type="button" onClick={() => prepareEdit(p)} className="p-2 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                                <Edit3 size={16} />
+                              </button>
+                              <button type="button" onClick={() => handleDelete(p.id)} className="p-2 text-zinc-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
+                    {filteredProducts.length === 0 && (
+                      <div className="text-center py-10 opacity-50">
+                        <Search size={32} className="mx-auto mb-2 text-zinc-200"/>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Aucun produit trouvé</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           ) : view === 'orders' ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2.5rem] shadow-sm border border-zinc-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-zinc-50">
-                      <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Profil Client</th>
-                      <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100 text-center">Articles</th>
-                      <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Total</th>
-                      <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Action Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-50">
-                    {orders.length > 0 ? orders.map((order) => (
-                      <tr key={order.id} className="hover:bg-blue-50/30 transition-all group">
-                        <td className="p-6">
-                          <div className="flex items-start gap-4">
-                            <div className="h-12 w-12 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                              <User size={20} />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="font-black text-sm">{order.client_name || 'Inconnu'}</p>
-                              <div className="flex flex-col gap-0.5">
-                                <span className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-bold"><Phone size={10}/> {order.phone || 'N/A'}</span>
-                                <span className="flex items-center gap-1.5 text-[10px] text-zinc-400"><MapPin size={10}/> {order.address || 'Non spécifiée'}</span>
-                                <span className="text-[9px] text-blue-300 italic uppercase">ID Commande: #{order.id}</span>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Recherche commandes */}
+              <div className="bg-white p-4 rounded-3xl border border-zinc-200 flex items-center gap-4">
+                <Search size={20} className="text-zinc-400"/>
+                <input 
+                  type="text" 
+                  placeholder="Filtrer par nom client ou téléphone..."
+                  className="bg-transparent border-none outline-none font-bold text-sm w-full"
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="bg-white rounded-[2.5rem] shadow-sm border border-zinc-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50">
+                        <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Profil Client</th>
+                        <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100 text-center">Articles</th>
+                        <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Total</th>
+                        <th className="p-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-zinc-100">Action Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-blue-50/30 transition-all group">
+                          <td className="p-6">
+                            <div className="flex items-start gap-4">
+                              <div className="h-12 w-12 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                <User size={20} />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="font-black text-sm">{order.client_name || 'Inconnu'}</p>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-bold"><Phone size={10}/> {order.phone || 'N/A'}</span>
+                                  <span className="flex items-center gap-1.5 text-[10px] text-zinc-400"><MapPin size={10}/> {order.address || 'Non spécifiée'}</span>
+                                  <span className="text-[9px] text-blue-300 italic uppercase">ID Commande: #{order.id}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="inline-flex items-center justify-center h-8 w-8 bg-black text-white rounded-full text-[10px] font-black mb-1">
-                               {order.items_count}
-                            </span>
-                            <p className="text-[10px] text-zinc-400 font-bold max-w-[150px] text-center italic">
-                               {order.items_details || 'Détails indisponibles'}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <p className="text-sm font-black text-orange-600">{order.total_price} $</p>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex flex-col gap-2">
-                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider text-center ${
-                              order.status === 'Livré' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              {order.status || 'En attente'}
-                            </span>
-                            
-                            {order.status !== 'Livré' && (
-                              <button 
-                                onClick={() => updateOrderStatus(order.id)}
-                                className="flex items-center justify-center gap-2 py-1 text-[9px] font-black uppercase text-blue-600 hover:underline"
-                              >
-                                <CheckCircle2 size={12}/> Confirmer Livraison
-                              </button>
-                            )}
+                          </td>
+                          <td className="p-6">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center justify-center h-8 w-8 bg-black text-white rounded-full text-[10px] font-black mb-1">
+                                 {order.items_count}
+                              </span>
+                              <p className="text-[10px] text-zinc-400 font-bold max-w-[150px] text-center italic">
+                                 {order.items_details || 'Détails indisponibles'}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="p-6">
+                            <p className="text-sm font-black text-orange-600">{order.total_price} $</p>
+                          </td>
+                          <td className="p-6">
+                            <div className="flex flex-col gap-2">
+                              <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider text-center ${
+                                order.status === 'Livré' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
+                              }`}>
+                                {order.status || 'En attente'}
+                              </span>
+                              
+                              {order.status !== 'Livré' && (
+                                <button 
+                                  onClick={() => updateOrderStatus(order.id)}
+                                  className="flex items-center justify-center gap-2 py-1 text-[9px] font-black uppercase text-blue-600 hover:underline"
+                                >
+                                  <CheckCircle2 size={12}/> Confirmer Livraison
+                                </button>
+                              )}
 
-                            <button 
-                              onClick={() => deleteOrder(order.id)}
-                              className="flex items-center justify-center gap-2 py-1 text-[9px] font-black uppercase text-red-500 hover:text-red-700 transition-colors"
-                            >
-                              <Trash2 size={12}/> Supprimer
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={4} className="p-20 text-center">
-                          <ShoppingBag size={48} className="text-zinc-100 mx-auto mb-4" />
-                          <p className="text-zinc-300 font-bold uppercase text-xs tracking-widest">Aucune commande</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                              <button 
+                                onClick={() => deleteOrder(order.id)}
+                                className="flex items-center justify-center gap-2 py-1 text-[9px] font-black uppercase text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                <Trash2 size={12}/> Supprimer
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={4} className="p-20 text-center">
+                            <ShoppingBag size={48} className="text-zinc-100 mx-auto mb-4" />
+                            <p className="text-zinc-300 font-bold uppercase text-xs tracking-widest">Aucune commande trouvée</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-               <div className="bg-white p-12 rounded-[3rem] border border-zinc-200 text-center space-y-6">
-                  <div className="h-24 w-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                    <FileText size={40} />
-                  </div>
-                  <h2 className="text-2xl font-black italic">Centre de Rapports Analytiques</h2>
-                  <p className="text-zinc-400 text-sm max-w-md mx-auto font-medium">
-                    Générez un document PDF complet incluant l&apos;état de votre inventaire, votre chiffre d&apos;affaires et l&apos;historique complet des transactions livrées.
-                  </p>
-                  <button 
-                    onClick={generateGlobalReport}
-                    className="flex items-center gap-3 bg-black text-white px-10 py-5 rounded-full mx-auto font-black uppercase text-[10px] tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl active:scale-95"
-                  >
-                    <Download size={16}/> Télécharger le Rapport Global (.pdf)
-                  </button>
-               </div>
+                <div className="bg-white p-12 rounded-[3rem] border border-zinc-200 text-center space-y-6 shadow-sm">
+                   <div className="h-24 w-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                     <FileText size={40} />
+                   </div>
+                   <h2 className="text-2xl font-black italic">Centre de Rapports Analytiques</h2>
+                   <p className="text-zinc-400 text-sm max-w-md mx-auto font-medium">
+                     Générez un document PDF complet incluant l&apos;état de votre inventaire, votre chiffre d&apos;affaires et l&apos;historique complet des transactions livrées.
+                   </p>
+                   <button 
+                     onClick={generateGlobalReport}
+                     className="flex items-center gap-3 bg-black text-white px-10 py-5 rounded-full mx-auto font-black uppercase text-[10px] tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl active:scale-95"
+                   >
+                     <Download size={16}/> Télécharger le Rapport Global (.pdf)
+                   </button>
+                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
-                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Top Performance</p>
-                    <p className="text-xs font-bold text-zinc-400 uppercase">Produit récemment ajouter :</p>
-                    <p className="text-xl font-black italic mt-1">
-                        {products.length > 0 ? [...products].sort((a,b) => {
-                           const stockA = typeof a.stock === 'string' ? parseInt(a.stock) : a.stock;
-                           const stockB = typeof b.stock === 'string' ? parseInt(b.stock) : b.stock;
-                           return stockB - stockA;
-                        })[0].nom : 'N/A'}
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm relative overflow-hidden group">
+                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                        <TrendingUp size={64}/>
+                     </div>
+                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4">Stock Alert</p>
+                     <p className="text-xs font-bold text-zinc-400 uppercase">Articles en rupture/faibles :</p>
+                     <p className="text-xl font-black italic mt-1 text-red-500">
+                        {products.filter(p => (typeof p.stock === 'string' ? parseInt(p.stock) : p.stock) <= 2).length} Produits
+                     </p>
+                   </div>
+
+                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
+                     <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-4">Panier Moyen</p>
+                     <p className="text-xs font-bold text-zinc-400 uppercase">Valeur moyenne par client :</p>
+                     <p className="text-xl font-black italic mt-1">{averageOrder.toFixed(2)} $</p>
+                   </div>
+
+                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
+                     <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-4">Volume d&apos;activité</p>
+                     <p className="text-xs font-bold text-zinc-400 uppercase">Commandes traitées :</p>
+                     <p className="text-xl font-black italic mt-1">{orders.length} transactions</p>
+                   </div>
+                </div>
+
+                {/* Section Alertes Stock Rapide */}
+                {products.filter(p => (typeof p.stock === 'string' ? parseInt(p.stock) : p.stock) <= 2).length > 0 && (
+                  <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertTriangle className="text-red-600" size={18}/>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-red-600">Produits nécessitant un réapprovisionnement</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {products.filter(p => (typeof p.stock === 'string' ? parseInt(p.stock) : p.stock) <= 2).map(p => (
+                        <span key={p.id} className="bg-white px-4 py-2 rounded-xl text-[10px] font-bold border border-red-200">
+                          {p.nom} ({p.stock} restant)
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm">
-                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-4">Volume d&apos;activité</p>
-                    <p className="text-xs font-bold text-zinc-400 uppercase">Commandes traitées :</p>
-                    <p className="text-xl font-black italic mt-1">{orders.length} transactions</p>
-                  </div>
-               </div>
+                )}
             </motion.div>
           )}
         </div>
