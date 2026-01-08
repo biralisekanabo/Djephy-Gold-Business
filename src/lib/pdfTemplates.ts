@@ -62,7 +62,7 @@ export function createInvoicePDF(order: Order, profile?: { nom_complet?: string;
   doc.text(`Ville: ${order.ville || '—'}`, 16, 76);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('ÉMETTEUR', 113, 58);
+  doc.text('ENTREPRISE', 113, 58);
   doc.setFont('helvetica', 'normal');
   doc.text('Djephy Gold Business', 113, 64);
   doc.text(`Date facture: ${dateStr}`, 113, 70);

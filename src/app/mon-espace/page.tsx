@@ -118,7 +118,7 @@ export default function DashboardPage() {
   if (loading) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center">
       <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Synchronisation...</p>
+      <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Chargement...</p>
     </div>
   );
 
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                     onClick={() => { localStorage.clear(); window.location.href='/'; }} 
                     className="w-full mt-4 py-4 border border-zinc-200 text-red-500 rounded-2xl font-black uppercase text-[10px] hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                 >
-                    <LogOut size={16} /> Quitter la session
+                    <LogOut size={16} /> Deconnexion
                 </button>
               </div>
             </section>
